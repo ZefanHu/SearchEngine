@@ -21,7 +21,6 @@ public:
     using WEIGHT_VES = std::vector<std::vector<std::pair<std::string, double>>>;
 
     PageLibPreprocessor();
-    // ~PageLibPreprocessor() = default;
 
     static void initConfiguration(const std::string &configPath);
     void createInitialWebPageLib();

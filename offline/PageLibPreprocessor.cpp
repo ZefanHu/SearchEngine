@@ -36,13 +36,6 @@ void PageLibPreprocessor::createInitialWebPageLib()
     pageLib.store();
 }
 
-// PageLibPreprocessor::~PageLibPreprocessor() = default;
-
-// void PageLibPreprocessor::initConfiguration(const std::string &configPath)
-// {
-//     Configuration::getInstance(configPath);
-// }
-
 void PageLibPreprocessor::generateUnRepeatedWebPageLib()
 {
     loadOriginalWebPageOffsetLib();
@@ -179,7 +172,11 @@ void PageLibPreprocessor::invertIndexHelper()
 
     std::ifstream unrepeated_web_page_lib_ifs(_unrepeated_webpage_lib_path);
     std::ofstream invert_index_lib_ofs(_inverted_index_lib_path);
-
+    if (!invert_index_lib_ofs)
+    {
+        std::cerr << "Error: Unable to open file for writing inverted index.\n";
+        return;
+    }
     TF_DF_MAP tf_df_umap;
     WEIGHT_VES doc_weight_ves(_offset_lib.size() + 1);
 
@@ -202,6 +199,7 @@ void PageLibPreprocessor::invertIndexHelper()
         cur_page.invertIndexLibHelper(_p_split_tool.get());
 
         saveWordTfDf(tf_df_umap, cur_page.getWordFrequenceMap(), doc_id);
+        storeIntoInvertIndexLib(invert_index_lib_ofs);
     }
 
     std::cout << "\t-> 100.00% : " << _offset_lib.size() << "\n";
