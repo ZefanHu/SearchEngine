@@ -31,7 +31,7 @@ public:
     const unordered_map<string, string> &getConfigMap() const;
 
     // 获取停用词集合
-    const unordered_set<string> &getStopWordSet() const;
+    unordered_set<string> &getStopWordSet();
 
 private:
     // 私有构造函数，防止外部实例化

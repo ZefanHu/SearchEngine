@@ -22,13 +22,13 @@ public:
     const std::string &getURL() const;
     const std::map<std::string, int> &getWordFrequenceMap() const;
     uint64_t getFigurePrint() const;
+    void extractWebPage();
 
     friend bool operator==(const WebPage &lhs, const WebPage &rhs);
     friend bool operator!=(const WebPage &lhs, const WebPage &rhs);
     friend bool operator<(const WebPage &lhs, const WebPage &rhs);
 
 private:
-    void extractWebPage();
     void generateWordFrequenceMap(SplitTool *p_split_tool);
     void generateFigurePrint(simhash::Simhasher *p_simhasher);
 
