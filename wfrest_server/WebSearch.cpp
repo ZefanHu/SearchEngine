@@ -36,18 +36,17 @@ void WebSearch::doSearch(string query_word)
 string WebSearch::getResult()
 {
     if (_no_result)
-        return {};
+        return "[]"; // 返回空数组
 
-    nlohmann::json res_json;
+    nlohmann::json res_json = nlohmann::json::array();
 
-    for (size_t i = 0; i < _res_ves.size(); i++)
+    for (const auto &page : _res_ves)
     {
-        string title = "<p>" + _res_ves[i][0] + "</p>";
-        string link = "<a href='" + _res_ves[i][1] + "'>";
-        string content = "<p>" + _res_ves[i][2] + "</p>";
-        string res = "<div>" + link + title + "</a>" + content + "</div>";
-
-        res_json.push_back(res);
+        nlohmann::json page_json;
+        page_json["title"] = page[0];
+        page_json["url"] = page[1];
+        page_json["content"] = page[2];
+        res_json.push_back(page_json);
     }
 
     return res_json.dump();

@@ -151,7 +151,6 @@
             fetch(`/search?query=${encodeURIComponent(query)}`)
                 .then(response => response.json())
                 .then(data => {
-                    console.log('搜索结果:', data); // 在控制台打印原始数据
                     displayResults(data);
                 })
                 .catch(error => {
@@ -159,8 +158,6 @@
                     resultsContainer.innerHTML = '<p>搜索时发生错误，请稍后再试。</p>';
                 });
         }
-
-
 
         function getRecommendations(query) {
             fetch(`/recommend?query=${encodeURIComponent(query)}`)
@@ -176,33 +173,21 @@
 
         function displayResults(results) {
             resultsContainer.innerHTML = '';
-            if (!results || results.length === 0) {
+            if (results.length === 0) {
                 resultsContainer.innerHTML = '<p>没有找到相关结果。</p>';
                 return;
             }
             results.forEach(result => {
                 const resultElement = document.createElement('div');
                 resultElement.className = 'result-item';
-
-                // 解析HTML字符串
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(result, 'text/html');
-
-                // 提取信息
-                const link = doc.querySelector('a');
-                const title = link ? link.textContent : '无标题';
-                const url = link ? link.href : '#';
-                const snippet = doc.querySelector('p') ? doc.querySelector('p').textContent : '无描述';
-
                 resultElement.innerHTML = `
-            <div class="result-title">${title}</div>
-            <div class="result-url">${url}</div>
-            <div class="result-snippet">${snippet}</div>
+            <div class="result-title"><a href="${result.url}" target="_blank">${result.title}</a></div>
+            <div class="result-url">${result.url}</div>
+            <div class="result-snippet">${result.content}</div>
         `;
                 resultsContainer.appendChild(resultElement);
             });
         }
-
 
         function displayRecommendations(recommendations) {
             suggestionsContainer.innerHTML = '';
