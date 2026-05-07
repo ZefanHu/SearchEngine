@@ -222,7 +222,8 @@ CMakeFiles/search_server.dir/src/server/SearchEngineServer.cpp.o: \
  /root/SearchEngine/include/../include/SplitTool.h \
  /root/SearchEngine/include/../include/KeyRecommend.h \
  /root/SearchEngine/include/../include/Dictionary.h \
- /usr/include/c++/11/set /usr/include/c++/11/bits/stl_set.h \
+ /root/SearchEngine/include/../include/TrieTree.h /usr/include/c++/11/set \
+ /usr/include/c++/11/bits/stl_set.h \
  /usr/include/c++/11/bits/stl_multiset.h /usr/include/c++/11/fstream \
  /usr/include/x86_64-linux-gnu/c++/11/bits/basic_file.h \
  /usr/include/x86_64-linux-gnu/c++/11/bits/c++io.h \

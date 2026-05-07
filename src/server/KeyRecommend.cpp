@@ -35,44 +35,7 @@ string KeyRecommend::getResult()
 
 void KeyRecommend::getRecommendWordSet(const string &query_word, set<int> &merge_set)
 {
-    set<string> unrepeated_character;
-
-    auto _word_index_map = Dictionary::getInstance().getWordFequenceIndexMap();
-
-    // 1. 分离单词
-    for (size_t i = 0; i < query_word.size();)
-    {
-        size_t nbytes = nBytesCode(query_word[i]);
-
-        unrepeated_character.insert(query_word.substr(i, nbytes));
-
-        i += nbytes;
-    }
-
-    // 2. 找集合
-    vector<set<int> *> ch_set_vec;
-
-    for (string ch : unrepeated_character)
-    {
-        auto index_map_it = _word_index_map.find(ch);
-        if (index_map_it != _word_index_map.end())
-        {
-            ch_set_vec.push_back(&index_map_it->second);
-        }
-    }
-
-    // 3. 取并集
-    for (size_t i = 0; i < ch_set_vec.size(); i++)
-    {
-        set<int> *p_qword_set = ch_set_vec[i];
-
-        auto sit = p_qword_set->begin();
-        while (sit != p_qword_set->end())
-        {
-            merge_set.insert(*sit);
-            ++sit;
-        }
-    }
+    merge_set = Dictionary::getInstance().getTrieTree().searchPrefix(query_word);
 }
 
 void KeyRecommend::generateResult(const string &query_word, set<int> &merge_set)

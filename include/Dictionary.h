@@ -3,6 +3,7 @@
 
 #include "Configuration.h"
 #include "SplitToolCppJieba.h"
+#include "TrieTree.h"
 #include <vector>
 #include <set>
 #include <map>
@@ -38,7 +39,7 @@ public:
 
     vector<pair<string, int>> &getWordFrequenceDict();
 
-    map<string, set<int>> &getWordFequenceIndexMap();
+    TrieTree &getTrieTree();
 
     vector<pair<int, int>> &getOffsetLib();
 
@@ -56,7 +57,7 @@ private:
 
     vector<pair<string, int>> _dict_freq_vec;
 
-    map<string, set<int>> _word_index_map;
+    TrieTree _trie_tree;
 
     vector<pair<int, int>> _offset_lib_ves;
 

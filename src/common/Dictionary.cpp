@@ -25,9 +25,6 @@ void Dictionary::loadDataSet()
     ifstream en_dict_ifs(Configuration::getInstance().getConfig("en_dict.dat"));
     ifstream zh_dict_ifs(Configuration::getInstance().getConfig("zh_dict.dat"));
 
-    ifstream en_index_ifs(Configuration::getInstance().getConfig("en_dict_index.dat"));
-    ifstream zh_index_ifs(Configuration::getInstance().getConfig("zh_dict_index.dat"));
-
     string line;
 
     // 1. 加载英文字典
@@ -44,9 +41,6 @@ void Dictionary::loadDataSet()
         _dict_freq_vec.emplace_back(word, frequence);
     }
 
-    // 字典偏移英文单词数
-    int en_offset = _dict_freq_vec.size();
-
     // 2. 加载中文字典
     while (getline(zh_dict_ifs, line))
     {
@@ -61,42 +55,10 @@ void Dictionary::loadDataSet()
         _dict_freq_vec.emplace_back(word, frequence);
     }
 
-    // 3. 加载英文索引
-    while (getline(en_index_ifs, line))
+    // 3. 基于词典动态构建 Trie 树
+    for (size_t i = 0; i < _dict_freq_vec.size(); ++i)
     {
-        istringstream iss(line);
-
-        string word;
-
-        int index;
-
-        iss >> word;
-
-        while (iss.good())
-        {
-            iss >> index;
-
-            _word_index_map[word].insert(index);
-        }
-    }
-
-    // 4. 加载中文索引
-    while (getline(zh_index_ifs, line))
-    {
-        istringstream iss(line);
-
-        string word;
-
-        int index;
-
-        iss >> word;
-
-        while (iss.good())
-        {
-            iss >> index;
-
-            _word_index_map[word].insert(index + en_offset);
-        }
+        _trie_tree.insert(_dict_freq_vec[i].first, static_cast<int>(i));
     }
 }
 
@@ -143,9 +105,9 @@ vector<pair<string, int>> &Dictionary::getWordFrequenceDict()
     return _dict_freq_vec;
 }
 
-map<string, set<int>> &Dictionary::getWordFequenceIndexMap()
+TrieTree &Dictionary::getTrieTree()
 {
-    return _word_index_map;
+    return _trie_tree;
 }
 
 vector<pair<int, int>> &Dictionary::getOffsetLib()
