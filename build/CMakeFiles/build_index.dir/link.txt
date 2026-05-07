@@ -1,0 +1,1 @@
+/usr/bin/c++ CMakeFiles/build_index.dir/src/offline/main.cpp.o -o ../bin/build_index  libsearch_offline.a libsearch_common.a -lwfrest -lworkflow -ltinyxml2 

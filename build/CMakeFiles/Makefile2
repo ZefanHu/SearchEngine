@@ -66,6 +66,7 @@ CMAKE_BINARY_DIR = /root/SearchEngine/build
 all: CMakeFiles/search_common.dir/all
 all: CMakeFiles/search_offline.dir/all
 all: CMakeFiles/search_server.dir/all
+all: CMakeFiles/build_index.dir/all
 .PHONY : all
 
 # The main recursive "preinstall" target.
@@ -76,6 +77,7 @@ preinstall:
 clean: CMakeFiles/search_common.dir/clean
 clean: CMakeFiles/search_offline.dir/clean
 clean: CMakeFiles/search_server.dir/clean
+clean: CMakeFiles/build_index.dir/clean
 .PHONY : clean
 
 #=============================================================================
@@ -85,7 +87,7 @@ clean: CMakeFiles/search_server.dir/clean
 CMakeFiles/search_common.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/search_common.dir/build.make CMakeFiles/search_common.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/search_common.dir/build.make CMakeFiles/search_common.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/root/SearchEngine/build/CMakeFiles --progress-num=1,2,3,4,5,6 "Built target search_common"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/root/SearchEngine/build/CMakeFiles --progress-num=3,4,5,6,7,8 "Built target search_common"
 .PHONY : CMakeFiles/search_common.dir/all
 
 # Build rule for subdir invocation for target.
@@ -111,7 +113,7 @@ CMakeFiles/search_common.dir/clean:
 CMakeFiles/search_offline.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/search_offline.dir/build.make CMakeFiles/search_offline.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/search_offline.dir/build.make CMakeFiles/search_offline.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/root/SearchEngine/build/CMakeFiles --progress-num=7,8,9,10,11 "Built target search_offline"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/root/SearchEngine/build/CMakeFiles --progress-num=9,10,11,12,13 "Built target search_offline"
 .PHONY : CMakeFiles/search_offline.dir/all
 
 # Build rule for subdir invocation for target.
@@ -137,7 +139,7 @@ CMakeFiles/search_offline.dir/clean:
 CMakeFiles/search_server.dir/all: CMakeFiles/search_common.dir/all
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/search_server.dir/build.make CMakeFiles/search_server.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/search_server.dir/build.make CMakeFiles/search_server.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/root/SearchEngine/build/CMakeFiles --progress-num=12,13,14,15,16,17 "Built target search_server"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/root/SearchEngine/build/CMakeFiles --progress-num=14,15,16,17,18,19 "Built target search_server"
 .PHONY : CMakeFiles/search_server.dir/all
 
 # Build rule for subdir invocation for target.
@@ -155,6 +157,33 @@ search_server: CMakeFiles/search_server.dir/rule
 CMakeFiles/search_server.dir/clean:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/search_server.dir/build.make CMakeFiles/search_server.dir/clean
 .PHONY : CMakeFiles/search_server.dir/clean
+
+#=============================================================================
+# Target rules for target CMakeFiles/build_index.dir
+
+# All Build rule for target.
+CMakeFiles/build_index.dir/all: CMakeFiles/search_offline.dir/all
+CMakeFiles/build_index.dir/all: CMakeFiles/search_common.dir/all
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/build_index.dir/build.make CMakeFiles/build_index.dir/depend
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/build_index.dir/build.make CMakeFiles/build_index.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/root/SearchEngine/build/CMakeFiles --progress-num=1,2 "Built target build_index"
+.PHONY : CMakeFiles/build_index.dir/all
+
+# Build rule for subdir invocation for target.
+CMakeFiles/build_index.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /root/SearchEngine/build/CMakeFiles 13
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/build_index.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /root/SearchEngine/build/CMakeFiles 0
+.PHONY : CMakeFiles/build_index.dir/rule
+
+# Convenience name for target.
+build_index: CMakeFiles/build_index.dir/rule
+.PHONY : build_index
+
+# clean rule for target.
+CMakeFiles/build_index.dir/clean:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/build_index.dir/build.make CMakeFiles/build_index.dir/clean
+.PHONY : CMakeFiles/build_index.dir/clean
 
 #=============================================================================
 # Special targets to cleanup operation of make.

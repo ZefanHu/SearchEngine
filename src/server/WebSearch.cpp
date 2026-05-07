@@ -57,7 +57,14 @@ void WebSearch::generateQueryWordVector(vector<string> &split_res, const string 
 {
     unordered_set<string> &stop_word_set = Configuration::getInstance().getStopWordSet();
 
-    split_res = _p_split_tool->cut(query_word);
+    std::string lower_query = query_word;
+    for (char &c : lower_query)
+    {
+        if (c >= 'A' && c <= 'Z')
+            c += 32;
+    }
+
+    split_res = _p_split_tool->cut(lower_query);
 
     auto split_res_it = split_res.begin();
 

@@ -42,4 +42,5 @@ set(CMAKE_DEPEND_INFO_FILES
   "CMakeFiles/search_common.dir/DependInfo.cmake"
   "CMakeFiles/search_offline.dir/DependInfo.cmake"
   "CMakeFiles/search_server.dir/DependInfo.cmake"
+  "CMakeFiles/build_index.dir/DependInfo.cmake"
   )

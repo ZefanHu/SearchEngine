@@ -70,12 +70,15 @@ void NetServer::keyWordRecommendMoudle()
                         return;
                     }
 
+                    // 路由前缀避免与 /search 共享 _caches 时的键碰撞
+                    std::string cache_key = "R:" + query_word;
+
                     // 1. 计算 Hash 确定缓存分片
-                    int idx = std::hash<std::string>{}(query_word) % _caches.size();
+                    int idx = std::hash<std::string>{}(cache_key) % _caches.size();
                     std::string res;
 
                     // 2. 查缓存
-                    if (_caches[idx]->get(query_word, res))
+                    if (_caches[idx]->get(cache_key, res))
                     {
                         resp->String(res);
                         return;
@@ -94,9 +97,9 @@ void NetServer::keyWordRecommendMoudle()
 
                     // 4. 设置计算完成后的回调：写入缓存并返回响应
                     go_task->set_callback(
-                        [this, query_word, resp, idx, res_ptr](WFGoTask *task)
+                        [this, cache_key, resp, idx, res_ptr](WFGoTask *task)
                         {
-                            _caches[idx]->put(query_word, *res_ptr);
+                            _caches[idx]->put(cache_key, *res_ptr);
                             resp->String(*res_ptr);
                         });
 
@@ -121,12 +124,15 @@ void NetServer::webPageSearchMoudle()
                         return;
                     }
 
+                    // 路由前缀避免与 /recommend 共享 _caches 时的键碰撞
+                    std::string cache_key = "S:" + query_word;
+
                     // 1. 计算 Hash 确定缓存分片
-                    int idx = std::hash<std::string>{}(query_word) % _caches.size();
+                    int idx = std::hash<std::string>{}(cache_key) % _caches.size();
                     std::string res;
 
                     // 2. 查缓存
-                    if (_caches[idx]->get(query_word, res))
+                    if (_caches[idx]->get(cache_key, res))
                     {
                         resp->String(res);
                         return;
@@ -145,9 +151,9 @@ void NetServer::webPageSearchMoudle()
 
                     // 4. 设置计算完成后的回调：写入缓存并返回响应
                     go_task->set_callback(
-                        [this, query_word, resp, idx, res_ptr](WFGoTask *task)
+                        [this, cache_key, resp, idx, res_ptr](WFGoTask *task)
                         {
-                            _caches[idx]->put(query_word, *res_ptr);
+                            _caches[idx]->put(cache_key, *res_ptr);
                             resp->String(*res_ptr);
                         });
 

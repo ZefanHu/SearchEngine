@@ -73,7 +73,11 @@ void WebPage::extractWebPage()
 void WebPage::generateWordFrequenceMap(SplitTool *p_split_tool)
 {
     std::string page_content(_content);
-    extractChineseWord(page_content);
+    for (char &c : page_content)
+    {
+        if (c >= 'A' && c <= 'Z')
+            c += 32;
+    }
 
     std::vector<std::string> split_res = p_split_tool->cut(page_content);
 

@@ -155,6 +155,19 @@ search_server/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/search_server.dir/build.make CMakeFiles/search_server.dir/build
 .PHONY : search_server/fast
 
+#=============================================================================
+# Target rules for targets named build_index
+
+# Build rule for target.
+build_index: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 build_index
+.PHONY : build_index
+
+# fast build rule for target.
+build_index/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/build_index.dir/build.make CMakeFiles/build_index.dir/build
+.PHONY : build_index/fast
+
 src/common/Configuration.o: src/common/Configuration.cpp.o
 .PHONY : src/common/Configuration.o
 
@@ -371,6 +384,30 @@ src/offline/PageLibPreprocessor.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/search_offline.dir/build.make CMakeFiles/search_offline.dir/src/offline/PageLibPreprocessor.cpp.s
 .PHONY : src/offline/PageLibPreprocessor.cpp.s
 
+src/offline/main.o: src/offline/main.cpp.o
+.PHONY : src/offline/main.o
+
+# target to build an object file
+src/offline/main.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/build_index.dir/build.make CMakeFiles/build_index.dir/src/offline/main.cpp.o
+.PHONY : src/offline/main.cpp.o
+
+src/offline/main.i: src/offline/main.cpp.i
+.PHONY : src/offline/main.i
+
+# target to preprocess a source file
+src/offline/main.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/build_index.dir/build.make CMakeFiles/build_index.dir/src/offline/main.cpp.i
+.PHONY : src/offline/main.cpp.i
+
+src/offline/main.s: src/offline/main.cpp.s
+.PHONY : src/offline/main.s
+
+# target to generate assembly for a file
+src/offline/main.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/build_index.dir/build.make CMakeFiles/build_index.dir/src/offline/main.cpp.s
+.PHONY : src/offline/main.cpp.s
+
 src/server/KeyRecommend.o: src/server/KeyRecommend.cpp.o
 .PHONY : src/server/KeyRecommend.o
 
@@ -499,6 +536,7 @@ help:
 	@echo "... depend"
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
+	@echo "... build_index"
 	@echo "... search_common"
 	@echo "... search_offline"
 	@echo "... search_server"
@@ -529,6 +567,9 @@ help:
 	@echo "... src/offline/PageLibPreprocessor.o"
 	@echo "... src/offline/PageLibPreprocessor.i"
 	@echo "... src/offline/PageLibPreprocessor.s"
+	@echo "... src/offline/main.o"
+	@echo "... src/offline/main.i"
+	@echo "... src/offline/main.s"
 	@echo "... src/server/KeyRecommend.o"
 	@echo "... src/server/KeyRecommend.i"
 	@echo "... src/server/KeyRecommend.s"
