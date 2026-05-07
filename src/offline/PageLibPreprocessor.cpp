@@ -285,28 +285,3 @@ void PageLibPreprocessor::storeIntoInvertIndexLib(std::ofstream &ofs)
         ofs << "\n";
     }
 }
-
-#ifdef TEST_PAGE_LIB_PREPROCESSOR
-int main()
-{
-    try
-    {
-        PageLibPreprocessor::initConfiguration("../conf/myconf.conf");
-
-        PageLibPreprocessor plp;
-
-        // 首先创建初始的网页库
-        plp.createInitialWebPageLib();
-
-        // 然后进行去重和倒排索引生成
-        plp.generateUnRepeatedWebPageLib();
-        plp.generateInvertIndexLib();
-    }
-    catch (const std::exception &e)
-    {
-        std::cerr << "Error: " << e.what() << std::endl;
-        return 1;
-    }
-    return 0;
-}
-#endif

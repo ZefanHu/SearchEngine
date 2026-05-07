@@ -23,28 +23,3 @@ std::vector<std::string> SplitToolCppJieba::cut(const std::string &file_content)
     _jieba->Cut(file_content, ret);
     return ret;
 }
-
-#ifdef TEST_SPLIT_TOOL_CPP_JIEBA
-int main(void)
-{
-    try
-    {
-        // 先初始化 Configuration
-        Configuration::getInstance("../conf/myconf.conf");
-
-        SplitToolCppJieba jb;
-        std::string s = "感觉细分的赛道越来越多了";
-        std::vector<std::string> res = jb.cut(s);
-        for (const auto &str : res)
-        {
-            std::cout << str << "\n";
-        }
-    }
-    catch (const std::exception &e)
-    {
-        std::cerr << "Error: " << e.what() << std::endl;
-        return 1;
-    }
-    return 0;
-}
-#endif // TEST_SPLIT_TOOL_CPP_JIEBA

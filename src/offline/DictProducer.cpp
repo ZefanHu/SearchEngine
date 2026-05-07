@@ -230,33 +230,3 @@ void DictProducer::extractChineseWord(string &word)
     }
     word = move(result);
 }
-#ifdef TEST_DICT_PRODUCER
-#include "SplitToolCppJieba.h"
-
-int main()
-{
-    try
-    {
-        // 确保 Configuration 已经初始化
-        Configuration::getInstance("../conf/myconf.conf");
-
-        // 创建英文字典
-        DictProducer englishProducer(LanguageType::English);
-        englishProducer.generateAllFiles();
-        cout << "English dictionary and index files generated successfully." << endl;
-
-        // 创建中文字典
-        SplitToolCppJieba jiebaTool;
-        DictProducer chineseProducer(LanguageType::Chinese, &jiebaTool);
-        chineseProducer.generateAllFiles();
-        cout << "Chinese dictionary and index files generated successfully." << endl;
-    }
-    catch (const exception &e)
-    {
-        cerr << "Error: " << e.what() << endl;
-        return 1;
-    }
-
-    return 0;
-}
-#endif // TEST_DICT_PRODUCER
