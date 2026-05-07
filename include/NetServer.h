@@ -12,6 +12,7 @@
 #include <workflow/WFFacilities.h>
 #include <wfrest/HttpServer.h>
 #include <iostream>
+#include <memory>
 #include <vector>
 #include <string>
 #include <map>
@@ -60,6 +61,8 @@ private:
     WFFacilities::WaitGroup _wait_group; // 等待组
 
     wfrest::HttpServer _server; // workflow异步HTTP服务器
+
+    std::vector<std::unique_ptr<search::LRUCache<std::string, std::string>>> _caches;
 };
 
 #endif

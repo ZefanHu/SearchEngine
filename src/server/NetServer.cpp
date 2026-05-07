@@ -1,8 +1,16 @@
 #include "../include/NetServer.h"
+#include <workflow/WFTaskFactory.h>
+#include <functional>
 
 NetServer::NetServer(int count) : _wait_group(count)
 {
     Dictionary::getInstance();
+
+    for (int i = 0; i < 4; ++i)
+    {
+        _caches.push_back(std::unique_ptr<search::LRUCache<std::string, std::string>>(
+            new search::LRUCache<std::string, std::string>(100)));
+    }
 }
 
 NetServer::~NetServer()
@@ -59,17 +67,41 @@ void NetServer::keyWordRecommendMoudle()
                     if (query_word.empty())
                     {
                         resp->String("No query result");
+                        return;
                     }
-                    else
+
+                    // 1. 计算 Hash 确定缓存分片
+                    int idx = std::hash<std::string>{}(query_word) % _caches.size();
+                    std::string res;
+
+                    // 2. 查缓存
+                    if (_caches[idx]->get(query_word, res))
                     {
-                        KeyRecommend recommend;
-
-                        recommend.doRecommend(query_word);
-
-                        string res = recommend.getResult();
-
                         resp->String(res);
+                        return;
                     }
+
+                    // 3. 缓存未命中：使用 WFGoTask 异步计算，防止阻塞网络线程
+                    auto res_ptr = std::make_shared<std::string>();
+                    WFGoTask *go_task = WFTaskFactory::create_go_task(
+                        "compute_recommend",
+                        [query_word, res_ptr]()
+                        {
+                            KeyRecommend recommend;
+                            recommend.doRecommend(query_word);
+                            *res_ptr = recommend.getResult();
+                        });
+
+                    // 4. 设置计算完成后的回调：写入缓存并返回响应
+                    go_task->set_callback(
+                        [this, query_word, resp, idx, res_ptr](WFGoTask *task)
+                        {
+                            _caches[idx]->put(query_word, *res_ptr);
+                            resp->String(*res_ptr);
+                        });
+
+                    // 5. 挂载到 Workflow 的执行流上
+                    series->push_back(go_task);
                 });
 }
 
@@ -86,17 +118,41 @@ void NetServer::webPageSearchMoudle()
                     if (query_word.empty())
                     {
                         resp->String("No query result");
+                        return;
                     }
-                    else
+
+                    // 1. 计算 Hash 确定缓存分片
+                    int idx = std::hash<std::string>{}(query_word) % _caches.size();
+                    std::string res;
+
+                    // 2. 查缓存
+                    if (_caches[idx]->get(query_word, res))
                     {
-                        WebSearch search;
-
-                        search.doSearch(query_word);
-
-                        string res = search.getResult();
-
                         resp->String(res);
+                        return;
                     }
+
+                    // 3. 缓存未命中：使用 WFGoTask 异步计算，防止阻塞网络线程
+                    auto res_ptr = std::make_shared<std::string>();
+                    WFGoTask *go_task = WFTaskFactory::create_go_task(
+                        "compute_search",
+                        [query_word, res_ptr]()
+                        {
+                            WebSearch search;
+                            search.doSearch(query_word);
+                            *res_ptr = search.getResult();
+                        });
+
+                    // 4. 设置计算完成后的回调：写入缓存并返回响应
+                    go_task->set_callback(
+                        [this, query_word, resp, idx, res_ptr](WFGoTask *task)
+                        {
+                            _caches[idx]->put(query_word, *res_ptr);
+                            resp->String(*res_ptr);
+                        });
+
+                    // 5. 挂载到 Workflow 的执行流上
+                    series->push_back(go_task);
                 });
 }
 
