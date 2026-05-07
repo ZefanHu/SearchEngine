@@ -7,6 +7,7 @@
 #include "KeyRecommend.h"
 #include "WebSearch.h"
 #include "Dictionary.h"
+#include "LRUCache.h"
 
 #include <workflow/WFFacilities.h>
 #include <wfrest/HttpServer.h>

@@ -295,6 +295,9 @@ CMakeFiles/search_server.dir/src/server/SearchEngineServer.cpp.o: \
  /usr/include/x86_64-linux-gnu/bits/param.h /usr/include/linux/param.h \
  /usr/include/x86_64-linux-gnu/asm/param.h \
  /usr/include/asm-generic/param.h \
+ /root/SearchEngine/include/../include/LRUCache.h \
+ /usr/include/c++/11/list /usr/include/c++/11/bits/stl_list.h \
+ /usr/include/c++/11/bits/list.tcc \
  /usr/local/include/workflow/WFFacilities.h \
  /usr/local/include/workflow/WFFuture.h /usr/include/c++/11/future \
  /usr/include/c++/11/condition_variable /usr/include/c++/11/atomic \

@@ -205,6 +205,7 @@ CMakeFiles/search_server.dir/src/server/KeyRecommend.cpp.o: ../src/server/KeyRec
   /usr/include/c++/11/bits/stl_vector.h \
   /usr/include/c++/11/bits/stl_bvector.h \
   /usr/include/c++/11/bits/vector.tcc \
+  ../include/TrieTree.h \
   /usr/include/c++/11/set \
   /usr/include/c++/11/bits/stl_tree.h \
   /usr/include/c++/11/bits/stl_set.h \
@@ -579,6 +580,7 @@ CMakeFiles/search_server.dir/src/server/NetServer.cpp.o: ../src/server/NetServer
   ../include/SplitTool.h \
   ../include/KeyRecommend.h \
   ../include/Dictionary.h \
+  ../include/TrieTree.h \
   /usr/include/c++/11/set \
   /usr/include/c++/11/bits/stl_set.h \
   /usr/include/c++/11/bits/stl_multiset.h \
@@ -662,6 +664,10 @@ CMakeFiles/search_server.dir/src/server/NetServer.cpp.o: ../src/server/NetServer
   /usr/include/linux/param.h \
   /usr/include/x86_64-linux-gnu/asm/param.h \
   /usr/include/asm-generic/param.h \
+  ../include/LRUCache.h \
+  /usr/include/c++/11/list \
+  /usr/include/c++/11/bits/stl_list.h \
+  /usr/include/c++/11/bits/list.tcc \
   /usr/local/include/workflow/WFFacilities.h \
   /usr/local/include/workflow/WFFuture.h \
   /usr/include/c++/11/future \
@@ -1131,6 +1137,7 @@ CMakeFiles/search_server.dir/src/server/SearchEngineServer.cpp.o: ../src/server/
   ../include/SplitTool.h \
   ../include/KeyRecommend.h \
   ../include/Dictionary.h \
+  ../include/TrieTree.h \
   /usr/include/c++/11/set \
   /usr/include/c++/11/bits/stl_set.h \
   /usr/include/c++/11/bits/stl_multiset.h \
@@ -1214,6 +1221,10 @@ CMakeFiles/search_server.dir/src/server/SearchEngineServer.cpp.o: ../src/server/
   /usr/include/linux/param.h \
   /usr/include/x86_64-linux-gnu/asm/param.h \
   /usr/include/asm-generic/param.h \
+  ../include/LRUCache.h \
+  /usr/include/c++/11/list \
+  /usr/include/c++/11/bits/stl_list.h \
+  /usr/include/c++/11/bits/list.tcc \
   /usr/local/include/workflow/WFFacilities.h \
   /usr/local/include/workflow/WFFuture.h \
   /usr/include/c++/11/future \
@@ -1605,6 +1616,7 @@ CMakeFiles/search_server.dir/src/server/WebSearch.cpp.o: ../src/server/WebSearch
   /usr/include/c++/11/bits/stl_vector.h \
   /usr/include/c++/11/bits/stl_bvector.h \
   /usr/include/c++/11/bits/vector.tcc \
+  ../include/TrieTree.h \
   /usr/include/c++/11/set \
   /usr/include/c++/11/bits/stl_tree.h \
   /usr/include/c++/11/bits/stl_set.h \
@@ -2046,6 +2058,7 @@ CMakeFiles/search_server.dir/src/server/main.cpp.o: ../src/server/main.cpp \
   ../include/SplitTool.h \
   ../include/KeyRecommend.h \
   ../include/Dictionary.h \
+  ../include/TrieTree.h \
   /usr/include/c++/11/set \
   /usr/include/c++/11/bits/stl_set.h \
   /usr/include/c++/11/bits/stl_multiset.h \
@@ -2129,6 +2142,10 @@ CMakeFiles/search_server.dir/src/server/main.cpp.o: ../src/server/main.cpp \
   /usr/include/linux/param.h \
   /usr/include/x86_64-linux-gnu/asm/param.h \
   /usr/include/asm-generic/param.h \
+  ../include/LRUCache.h \
+  /usr/include/c++/11/list \
+  /usr/include/c++/11/bits/stl_list.h \
+  /usr/include/c++/11/bits/list.tcc \
   /usr/local/include/workflow/WFFacilities.h \
   /usr/local/include/workflow/WFFuture.h \
   /usr/include/c++/11/future \
@@ -2335,6 +2352,10 @@ CMakeFiles/search_server.dir/src/server/main.cpp.o: ../src/server/main.cpp \
 
 /usr/local/include/wfrest/AopUtil.h:
 
+/usr/local/include/wfrest/Aspect.h:
+
+/usr/local/include/wfrest/Json.h:
+
 ../include/simhash/cppjieba/KeywordExtractor.hpp:
 
 /usr/include/c++/11/valarray:
@@ -2350,8 +2371,6 @@ CMakeFiles/search_server.dir/src/server/main.cpp.o: ../src/server/main.cpp \
 /usr/include/c++/11/bits/forward_list.tcc:
 
 /usr/include/x86_64-linux-gnu/bits/wordsize.h:
-
-/usr/include/x86_64-linux-gnu/bits/math-vector.h:
 
 /usr/include/c++/11/bits/stl_algo.h:
 
@@ -2408,8 +2427,6 @@ CMakeFiles/search_server.dir/src/server/main.cpp.o: ../src/server/main.cpp \
 /usr/include/c++/11/bits/gslice_array.h:
 
 /usr/local/include/workflow/DnsCache.h:
-
-/usr/include/c++/11/bits/ios_base.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/siginfo_t.h:
 
@@ -2655,8 +2672,6 @@ CMakeFiles/search_server.dir/src/server/main.cpp.o: ../src/server/main.cpp \
 
 /usr/include/x86_64-linux-gnu/bits/types/__sigval_t.h:
 
-/usr/include/x86_64-linux-gnu/c++/11/bits/gthr.h:
-
 /usr/include/openssl/dherr.h:
 
 /usr/include/c++/11/bits/stl_multimap.h:
@@ -2723,6 +2738,10 @@ CMakeFiles/search_server.dir/src/server/main.cpp.o: ../src/server/main.cpp \
 
 /usr/include/x86_64-linux-gnu/sys/cdefs.h:
 
+../include/TrieTree.h:
+
+/usr/include/c++/11/ext/concurrence.h:
+
 /usr/include/x86_64-linux-gnu/bits/types/struct_timeval.h:
 
 /usr/include/openssl/objects.h:
@@ -2778,6 +2797,12 @@ CMakeFiles/search_server.dir/src/server/main.cpp.o: ../src/server/main.cpp \
 /usr/local/include/wfrest/StrUtil.h:
 
 /usr/include/x86_64-linux-gnu/sys/socket.h:
+
+/usr/local/include/wfrest/HttpServer.h:
+
+/usr/local/include/workflow/ExecRequest.h:
+
+/usr/include/openssl/asyncerr.h:
 
 /usr/include/c++/11/algorithm:
 
@@ -2927,15 +2952,9 @@ CMakeFiles/search_server.dir/src/server/main.cpp.o: ../src/server/main.cpp \
 
 ../include/simhash/cppjieba/limonp/LocalVector.hpp:
 
-/usr/include/c++/11/ext/concurrence.h:
-
-/usr/local/include/wfrest/HttpServer.h:
-
-/usr/include/openssl/asyncerr.h:
-
-/usr/local/include/workflow/ExecRequest.h:
-
 /usr/include/c++/11/exception:
+
+/usr/include/x86_64-linux-gnu/bits/math-vector.h:
 
 /usr/include/x86_64-linux-gnu/bits/flt-eval-method.h:
 
@@ -2954,6 +2973,8 @@ CMakeFiles/search_server.dir/src/server/main.cpp.o: ../src/server/main.cpp \
 /usr/include/x86_64-linux-gnu/sys/single_threaded.h:
 
 ../include/NetServer.h:
+
+/usr/include/c++/11/bits/stl_list.h:
 
 ../include/Configuration.h:
 
@@ -3045,6 +3066,10 @@ CMakeFiles/search_server.dir/src/server/main.cpp.o: ../src/server/main.cpp \
 
 ../include/simhash/cppjieba/PosTagger.hpp:
 
+/usr/local/include/wfrest/BluePrint.h:
+
+/usr/include/openssl/hmac.h:
+
 /usr/local/include/workflow/ProtocolMessage.h:
 
 ../include/simhash/cppjieba/HMMSegment.hpp:
@@ -3073,13 +3098,15 @@ CMakeFiles/search_server.dir/src/server/main.cpp.o: ../src/server/main.cpp \
 
 /usr/include/x86_64-linux-gnu/bits/signum-generic.h:
 
-/usr/local/include/wfrest/Aspect.h:
-
 /usr/include/c++/11/tuple:
 
 /usr/include/x86_64-linux-gnu/bits/types/sig_atomic_t.h:
 
 /usr/include/x86_64-linux-gnu/bits/ss_flags.h:
+
+/usr/include/x86_64-linux-gnu/c++/11/bits/gthr.h:
+
+/usr/include/c++/11/bits/list.tcc:
 
 /usr/include/openssl/asn1err.h:
 
@@ -3180,6 +3207,16 @@ CMakeFiles/search_server.dir/src/server/main.cpp.o: ../src/server/main.cpp \
 /usr/include/x86_64-linux-gnu/asm/param.h:
 
 /usr/include/asm-generic/param.h:
+
+/usr/include/c++/11/bits/ios_base.h:
+
+../include/LRUCache.h:
+
+/usr/local/include/wfrest/HttpFile.h:
+
+/usr/local/include/workflow/WFTask.inl:
+
+/usr/include/c++/11/list:
 
 /usr/include/c++/11/bits/forward_list.h:
 
@@ -3399,8 +3436,6 @@ CMakeFiles/search_server.dir/src/server/main.cpp.o: ../src/server/main.cpp \
 
 /usr/local/include/wfrest/StringPiece.h:
 
-/usr/local/include/wfrest/Json.h:
-
 /usr/include/zlib.h:
 
 /usr/include/zconf.h:
@@ -3412,11 +3447,3 @@ CMakeFiles/search_server.dir/src/server/main.cpp.o: ../src/server/main.cpp \
 /usr/local/include/wfrest/json_fwd.hpp:
 
 /usr/local/include/wfrest/Copyable.h:
-
-/usr/local/include/workflow/WFTask.inl:
-
-/usr/local/include/wfrest/HttpFile.h:
-
-/usr/include/openssl/hmac.h:
-
-/usr/local/include/wfrest/BluePrint.h:

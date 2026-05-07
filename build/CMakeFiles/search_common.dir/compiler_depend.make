@@ -434,6 +434,7 @@ CMakeFiles/search_common.dir/src/common/Dictionary.cpp.o: ../src/common/Dictiona
   /usr/include/c++/11/bits/stl_vector.h \
   /usr/include/c++/11/bits/stl_bvector.h \
   /usr/include/c++/11/bits/vector.tcc \
+  ../include/TrieTree.h \
   /usr/include/c++/11/set \
   /usr/include/c++/11/bits/stl_tree.h \
   /usr/include/c++/11/bits/stl_set.h \
@@ -1431,11 +1432,9 @@ CMakeFiles/search_common.dir/src/common/WebPage.cpp.o: ../src/common/WebPage.cpp
 
 /usr/include/x86_64-linux-gnu/bits/flt-eval-method.h:
 
+/usr/include/x86_64-linux-gnu/bits/math-vector.h:
+
 /usr/include/c++/11/exception:
-
-../include/TrieTree.h:
-
-/usr/include/c++/11/ext/concurrence.h:
 
 ../include/simhash/cppjieba/limonp/LocalVector.hpp:
 
@@ -1723,6 +1722,10 @@ CMakeFiles/search_common.dir/src/common/WebPage.cpp.o: ../src/common/WebPage.cpp
 
 /usr/include/x86_64-linux-gnu/asm/errno.h:
 
+/usr/include/c++/11/ext/concurrence.h:
+
+../include/TrieTree.h:
+
 /usr/include/x86_64-linux-gnu/sys/cdefs.h:
 
 /usr/include/stdc-predef.h:
@@ -1982,8 +1985,6 @@ CMakeFiles/search_common.dir/src/common/WebPage.cpp.o: ../src/common/WebPage.cpp
 /usr/include/c++/11/bits/stl_algo.h:
 
 /usr/include/c++/11/cassert:
-
-/usr/include/x86_64-linux-gnu/bits/math-vector.h:
 
 /usr/include/c++/11/bits/algorithmfwd.h:
 
