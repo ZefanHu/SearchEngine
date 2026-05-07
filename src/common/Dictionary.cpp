@@ -1,6 +1,7 @@
 #include "../include/Dictionary.h"
 
-Dictionary *Dictionary::_p_dictionary = nullptr;
+std::unique_ptr<Dictionary> Dictionary::_instance = nullptr;
+std::once_flag Dictionary::_initFlag;
 
 Dictionary::Dictionary()
 {
@@ -9,23 +10,14 @@ Dictionary::Dictionary()
     loadWebPageFile();
 }
 
-Dictionary *Dictionary::getInstance()
+Dictionary &Dictionary::getInstance()
 {
-    if (_p_dictionary == nullptr)
-    {
-        _p_dictionary = new Dictionary();
-    }
+    std::call_once(_initFlag, []()
+                   {
+        _instance.reset(new Dictionary());
+        atexit([]() { Dictionary::_instance.reset(); }); });
 
-    return _p_dictionary;
-}
-
-void Dictionary::delInstance()
-{
-    if (_p_dictionary)
-    {
-        delete _p_dictionary;
-        _p_dictionary = nullptr;
-    }
+    return *_instance;
 }
 
 void Dictionary::loadDataSet()
@@ -166,7 +158,7 @@ unordered_map<string, unordered_map<int, double>> &Dictionary::getInvertIndexLib
     return _invert_index_lib;
 }
 
-SplitTool *Dictionary::getSpliTool()
+SplitTool *Dictionary::getSplitTool()
 {
     return _p_split_tool;
 }

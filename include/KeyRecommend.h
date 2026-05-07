@@ -35,16 +35,16 @@ class KeyRecommend
 public:
     KeyRecommend();
 
-    void doRecommend(string query_word);
+    void doRecommend(const string &query_word);
 
     string getResult();
 
 private:
-    void getRecommendWordSet(string query_word, set<int> &merge_set);
-    void generateResult(string query_word, set<int> &merge_set);
+    void getRecommendWordSet(const string &query_word, set<int> &merge_set);
+    void generateResult(const string &query_word, set<int> &merge_set);
 
 private:
-    int minEditDistance(string first_word, string second_word);
+    int minEditDistance(const string &first_word, const string &second_word);
 
     size_t nBytesCode(const char ch);
 

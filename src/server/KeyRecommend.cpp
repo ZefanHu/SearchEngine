@@ -4,7 +4,7 @@ KeyRecommend::KeyRecommend()
 {
 }
 
-void KeyRecommend::doRecommend(string query_word)
+void KeyRecommend::doRecommend(const string &query_word)
 {
     set<int> merge_set;
 
@@ -33,11 +33,11 @@ string KeyRecommend::getResult()
     return res_json.dump();
 }
 
-void KeyRecommend::getRecommendWordSet(string query_word, set<int> &merge_set)
+void KeyRecommend::getRecommendWordSet(const string &query_word, set<int> &merge_set)
 {
     set<string> unrepeated_character;
 
-    auto _word_index_map = Dictionary::getInstance()->getWordFequenceIndexMap();
+    auto _word_index_map = Dictionary::getInstance().getWordFequenceIndexMap();
 
     // 1. 分离单词
     for (size_t i = 0; i < query_word.size();)
@@ -75,9 +75,9 @@ void KeyRecommend::getRecommendWordSet(string query_word, set<int> &merge_set)
     }
 }
 
-void KeyRecommend::generateResult(string query_word, set<int> &merge_set)
+void KeyRecommend::generateResult(const string &query_word, set<int> &merge_set)
 {
-    auto _dict_freq_vec = Dictionary::getInstance()->getWordFrequenceDict();
+    auto _dict_freq_vec = Dictionary::getInstance().getWordFrequenceDict();
 
     auto sit = merge_set.begin();
     while (sit != merge_set.end())
@@ -109,7 +109,7 @@ void KeyRecommend::generateResult(string query_word, set<int> &merge_set)
     }
 }
 
-int KeyRecommend::minEditDistance(string first_word, string second_word)
+int KeyRecommend::minEditDistance(const string &first_word, const string &second_word)
 {
     // 1. 得到中文字符串人类视角的长度
     size_t first_word_len = length(first_word);

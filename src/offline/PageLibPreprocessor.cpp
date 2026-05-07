@@ -210,7 +210,7 @@ void PageLibPreprocessor::invertIndexHelper()
     std::cout << "\t-> Calculate Success...\n"
               << "\t-> Min-Max-Scaler Web Page Word's TF-IDF\n";
 
-    minMaxScaler(doc_weight_ves);
+    l2Normalize(doc_weight_ves);
     std::cout << "\t-> Min-Max-Scaler Web Page Word's TF-IDF Success\n";
     std::cout << "[INFO] : Calculate Web Page Word's TF-IDF Success...\n";
 
@@ -252,7 +252,7 @@ void PageLibPreprocessor::calculateTFIDF(TF_DF_MAP &tf_df_umap, WEIGHT_VES &doc_
     printf("\t-> 100.00%% : %ld\n", tf_df_umap.size());
 }
 
-void PageLibPreprocessor::minMaxScaler(WEIGHT_VES &doc_weight_ves)
+void PageLibPreprocessor::l2Normalize(WEIGHT_VES &doc_weight_ves)
 {
     for (size_t doc_id = 1; doc_id < doc_weight_ves.size(); ++doc_id)
     {

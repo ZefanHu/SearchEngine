@@ -3,7 +3,6 @@
 #include "simhash/cppjieba/Jieba.hpp"
 
 SplitToolCppJieba::SplitToolCppJieba()
-    : _jieba(nullptr)
 {
     // const Configuration &config = Configuration::getInstance();
     const Configuration &config = Configuration::getInstance("../conf/myconf.conf");
@@ -13,13 +12,10 @@ SplitToolCppJieba::SplitToolCppJieba()
     std::string IDF_PATH = config.getConfig("IDF_PATH");
     std::string STOP_WORD_PATH = config.getConfig("STOP_WORD_PATH");
 
-    _jieba = new cppjieba::Jieba(DICT_PATH, HMM_PATH, USER_DICT_PATH, IDF_PATH, STOP_WORD_PATH);
+    _jieba.reset(new cppjieba::Jieba(DICT_PATH, HMM_PATH, USER_DICT_PATH, IDF_PATH, STOP_WORD_PATH));
 }
 
-SplitToolCppJieba::~SplitToolCppJieba()
-{
-    delete _jieba;
-}
+SplitToolCppJieba::~SplitToolCppJieba() = default;
 
 std::vector<std::string> SplitToolCppJieba::cut(const std::string &file_content)
 {

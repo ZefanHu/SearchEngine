@@ -1,11 +1,12 @@
 #include "../include/WebSearch.h"
+#include <vector>
 
 WebSearch::WebSearch()
 {
-    _p_split_tool = Dictionary::getInstance()->getSpliTool();
+    _p_split_tool = Dictionary::getInstance().getSplitTool();
 }
 
-void WebSearch::doSearch(string query_word)
+void WebSearch::doSearch(const string &query_word)
 {
     vector<string> split_res;
     generateQueryWordVector(split_res, query_word);
@@ -52,7 +53,7 @@ string WebSearch::getResult()
     return res_json.dump();
 }
 
-void WebSearch::generateQueryWordVector(vector<string> &split_res, string query_word)
+void WebSearch::generateQueryWordVector(vector<string> &split_res, const string &query_word)
 {
     unordered_set<string> &stop_word_set = Configuration::getInstance().getStopWordSet();
 
@@ -71,7 +72,7 @@ void WebSearch::generateQueryWordVector(vector<string> &split_res, string query_
     }
 }
 
-void WebSearch::generateQueryWordFrequenceMap(map<string, int> &word_frequence_map, vector<string> split_res)
+void WebSearch::generateQueryWordFrequenceMap(map<string, int> &word_frequence_map, const vector<string> &split_res)
 {
     for (size_t i = 0; i < split_res.size(); i++)
     {
@@ -79,11 +80,11 @@ void WebSearch::generateQueryWordFrequenceMap(map<string, int> &word_frequence_m
     }
 }
 
-void WebSearch::generateCandidateWebPageSet(set<int> &web_page_set, vector<string> split_res)
+void WebSearch::generateCandidateWebPageSet(set<int> &web_page_set, const vector<string> &split_res)
 {
     vector<set<int>> set_ves;
 
-    auto invert_index_lib = Dictionary::getInstance()->getInvertIndexLib();
+    auto invert_index_lib = Dictionary::getInstance().getInvertIndexLib();
 
     // 1. 查倒排索引找包含关键字的集合
     for (size_t i = 0; i < split_res.size(); i++)
@@ -130,7 +131,7 @@ void WebSearch::generateCandidateWebPageSet(set<int> &web_page_set, vector<strin
         _no_result = true;
 }
 
-void WebSearch::generateBaseVector(vector<double> &base_vector, map<string, int> &word_frequence_map, vector<string> split_res)
+void WebSearch::generateBaseVector(vector<double> &base_vector, map<string, int> &word_frequence_map, const vector<string> &split_res)
 {
     size_t N = 1;
 
@@ -149,10 +150,10 @@ void WebSearch::generateBaseVector(vector<double> &base_vector, map<string, int>
         base_vector.emplace_back(w);
     }
 
-    minMaxScaler(base_vector);
+    l2Normalize(base_vector);
 }
 
-void WebSearch::minMaxScaler(vector<double> &base_vector)
+void WebSearch::l2Normalize(vector<double> &base_vector)
 {
     double sigma_weight_squre = 0;
 
@@ -170,9 +171,9 @@ void WebSearch::minMaxScaler(vector<double> &base_vector)
     }
 }
 
-void WebSearch::findCandidateWebPageID(map<int, vector<double>> &pages_feature_ves_map, set<int> &web_page_set, vector<string> split_res)
+void WebSearch::findCandidateWebPageID(map<int, vector<double>> &pages_feature_ves_map, set<int> &web_page_set, const vector<string> &split_res)
 {
-    auto invert_index_lib = Dictionary::getInstance()->getInvertIndexLib();
+    auto invert_index_lib = Dictionary::getInstance().getInvertIndexLib();
 
     for (auto doc_id : web_page_set)
     {
@@ -280,7 +281,7 @@ void WebSearch::generateWebPage(vector<int> &most_similar_doc_id_vec)
 {
     ifstream web_page_lib_ifs(Configuration::getInstance().getConfig("unrepeated_webpage.dat"));
 
-    auto offset_lib_ves = Dictionary::getInstance()->getOffsetLib();
+    auto offset_lib_ves = Dictionary::getInstance().getOffsetLib();
 
     size_t web_page_count = most_similar_doc_id_vec.size();
 
@@ -293,11 +294,11 @@ void WebSearch::generateWebPage(vector<int> &most_similar_doc_id_vec)
 
         web_page_lib_ifs.seekg(offset);
 
-        char *p_buf = new char[page_len + 1]();
+        std::vector<char> p_buf(page_len + 1, '\0');
 
-        web_page_lib_ifs.read(p_buf, page_len);
+        web_page_lib_ifs.read(p_buf.data(), page_len);
 
-        string cur_page_content = p_buf;
+        string cur_page_content = p_buf.data();
 
         WebPage cur_page(cur_page_content);
 
@@ -306,8 +307,6 @@ void WebSearch::generateWebPage(vector<int> &most_similar_doc_id_vec)
         vector<string> cur_page_vec = {cur_page.getTitle(), cur_page.getURL(), cur_page.getContent()};
 
         _res_ves.emplace_back(cur_page_vec);
-
-        delete[] p_buf;
     }
 
     web_page_lib_ifs.close();

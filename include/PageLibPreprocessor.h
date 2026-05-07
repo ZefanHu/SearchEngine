@@ -38,7 +38,7 @@ private:
     void invertIndexHelper();
     void saveWordTfDf(TF_DF_MAP &tf_df_umap, const std::map<std::string, int> &word_frequence_map, int doc_id);
     void calculateTFIDF(TF_DF_MAP &tf_df_umap, WEIGHT_VES &doc_weight_ves);
-    void minMaxScaler(WEIGHT_VES &doc_weight_ves);
+    void l2Normalize(WEIGHT_VES &doc_weight_ves);
     void storeIntoInvertIndexLib(std::ofstream &ofs);
 
 private:

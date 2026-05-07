@@ -28,18 +28,18 @@ class WebSearch
 public:
     WebSearch();
 
-    void doSearch(string query_word);
+    void doSearch(const string &query_word);
 
     string getResult();
 
 private:
-    void generateQueryWordVector(vector<string> &split_res, string query_word);
-    void generateQueryWordFrequenceMap(map<string, int> &word_frequence_map, vector<string> split_res);
-    void generateCandidateWebPageSet(set<int> &web_page_set, vector<string> split_res);
+    void generateQueryWordVector(vector<string> &split_res, const string &query_word);
+    void generateQueryWordFrequenceMap(map<string, int> &word_frequence_map, const vector<string> &split_res);
+    void generateCandidateWebPageSet(set<int> &web_page_set, const vector<string> &split_res);
 
-    void generateBaseVector(vector<double> &base_vector, map<string, int> &word_frequence_map, vector<string> split_res);
-    void minMaxScaler(vector<double> &base_vector);
-    void findCandidateWebPageID(map<int, vector<double>> &pages_feature_ves_map, set<int> &web_page_set, vector<string> split_res);
+    void generateBaseVector(vector<double> &base_vector, map<string, int> &word_frequence_map, const vector<string> &split_res);
+    void l2Normalize(vector<double> &base_vector);
+    void findCandidateWebPageID(map<int, vector<double>> &pages_feature_ves_map, set<int> &web_page_set, const vector<string> &split_res);
 
     void generateIdCosSimilarityVector(vector<pair<int, double>> &cos_similar_ves, map<int, vector<double>> &pages_feature_ves_map, vector<double> &base_vector);
     void generateCandidateDocIDVector(vector<int> &most_similar_doc_id_vec, vector<pair<int, double>> &cos_similar_ves);

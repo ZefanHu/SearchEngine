@@ -4,6 +4,7 @@
 #include "SplitTool.h"
 #include <string>
 #include <vector>
+#include <memory>
 
 namespace cppjieba
 {
@@ -25,7 +26,7 @@ public:
     std::vector<std::string> cut(const std::string &file_content) override;
 
 private:
-    cppjieba::Jieba *_jieba;
+    std::unique_ptr<cppjieba::Jieba> _jieba;
 };
 
 #endif // SPLIT_TOOL_CPP_JIEBA_H
