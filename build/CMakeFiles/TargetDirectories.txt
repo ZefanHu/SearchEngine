@@ -1,0 +1,5 @@
+/root/SearchEngine/build/CMakeFiles/search_common.dir
+/root/SearchEngine/build/CMakeFiles/search_offline.dir
+/root/SearchEngine/build/CMakeFiles/search_server.dir
+/root/SearchEngine/build/CMakeFiles/edit_cache.dir
+/root/SearchEngine/build/CMakeFiles/rebuild_cache.dir

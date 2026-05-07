@@ -1,0 +1,2 @@
+/usr/bin/ar qc libsearch_offline.a CMakeFiles/search_offline.dir/src/offline/DictProducer.cpp.o CMakeFiles/search_offline.dir/src/offline/DirScanner.cpp.o CMakeFiles/search_offline.dir/src/offline/PageLib.cpp.o CMakeFiles/search_offline.dir/src/offline/PageLibPreprocessor.cpp.o
+/usr/bin/ranlib libsearch_offline.a
