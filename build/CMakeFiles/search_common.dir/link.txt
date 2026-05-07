@@ -1,2 +1,2 @@
-/usr/bin/ar qc libsearch_common.a CMakeFiles/search_common.dir/src/common/Configuration.cpp.o CMakeFiles/search_common.dir/src/common/Dictionary.cpp.o CMakeFiles/search_common.dir/src/common/SplitToolCppJieba.cpp.o CMakeFiles/search_common.dir/src/common/WebPage.cpp.o
+/usr/bin/ar qc libsearch_common.a CMakeFiles/search_common.dir/src/common/Configuration.cpp.o CMakeFiles/search_common.dir/src/common/Dictionary.cpp.o CMakeFiles/search_common.dir/src/common/SplitToolCppJieba.cpp.o CMakeFiles/search_common.dir/src/common/TrieTree.cpp.o CMakeFiles/search_common.dir/src/common/WebPage.cpp.o
 /usr/bin/ranlib libsearch_common.a

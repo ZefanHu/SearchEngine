@@ -11,6 +11,7 @@ set(CMAKE_DEPENDS_DEPENDENCY_FILES
   "/root/SearchEngine/src/common/Configuration.cpp" "CMakeFiles/search_common.dir/src/common/Configuration.cpp.o" "gcc" "CMakeFiles/search_common.dir/src/common/Configuration.cpp.o.d"
   "/root/SearchEngine/src/common/Dictionary.cpp" "CMakeFiles/search_common.dir/src/common/Dictionary.cpp.o" "gcc" "CMakeFiles/search_common.dir/src/common/Dictionary.cpp.o.d"
   "/root/SearchEngine/src/common/SplitToolCppJieba.cpp" "CMakeFiles/search_common.dir/src/common/SplitToolCppJieba.cpp.o" "gcc" "CMakeFiles/search_common.dir/src/common/SplitToolCppJieba.cpp.o.d"
+  "/root/SearchEngine/src/common/TrieTree.cpp" "CMakeFiles/search_common.dir/src/common/TrieTree.cpp.o" "gcc" "CMakeFiles/search_common.dir/src/common/TrieTree.cpp.o.d"
   "/root/SearchEngine/src/common/WebPage.cpp" "CMakeFiles/search_common.dir/src/common/WebPage.cpp.o" "gcc" "CMakeFiles/search_common.dir/src/common/WebPage.cpp.o.d"
   )
 

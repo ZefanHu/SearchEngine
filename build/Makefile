@@ -227,6 +227,30 @@ src/common/SplitToolCppJieba.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/search_common.dir/build.make CMakeFiles/search_common.dir/src/common/SplitToolCppJieba.cpp.s
 .PHONY : src/common/SplitToolCppJieba.cpp.s
 
+src/common/TrieTree.o: src/common/TrieTree.cpp.o
+.PHONY : src/common/TrieTree.o
+
+# target to build an object file
+src/common/TrieTree.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/search_common.dir/build.make CMakeFiles/search_common.dir/src/common/TrieTree.cpp.o
+.PHONY : src/common/TrieTree.cpp.o
+
+src/common/TrieTree.i: src/common/TrieTree.cpp.i
+.PHONY : src/common/TrieTree.i
+
+# target to preprocess a source file
+src/common/TrieTree.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/search_common.dir/build.make CMakeFiles/search_common.dir/src/common/TrieTree.cpp.i
+.PHONY : src/common/TrieTree.cpp.i
+
+src/common/TrieTree.s: src/common/TrieTree.cpp.s
+.PHONY : src/common/TrieTree.s
+
+# target to generate assembly for a file
+src/common/TrieTree.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/search_common.dir/build.make CMakeFiles/search_common.dir/src/common/TrieTree.cpp.s
+.PHONY : src/common/TrieTree.cpp.s
+
 src/common/WebPage.o: src/common/WebPage.cpp.o
 .PHONY : src/common/WebPage.o
 
@@ -487,6 +511,9 @@ help:
 	@echo "... src/common/SplitToolCppJieba.o"
 	@echo "... src/common/SplitToolCppJieba.i"
 	@echo "... src/common/SplitToolCppJieba.s"
+	@echo "... src/common/TrieTree.o"
+	@echo "... src/common/TrieTree.i"
+	@echo "... src/common/TrieTree.s"
 	@echo "... src/common/WebPage.o"
 	@echo "... src/common/WebPage.i"
 	@echo "... src/common/WebPage.s"

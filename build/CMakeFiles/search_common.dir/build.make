@@ -111,10 +111,24 @@ CMakeFiles/search_common.dir/src/common/SplitToolCppJieba.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/search_common.dir/src/common/SplitToolCppJieba.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /root/SearchEngine/src/common/SplitToolCppJieba.cpp -o CMakeFiles/search_common.dir/src/common/SplitToolCppJieba.cpp.s
 
+CMakeFiles/search_common.dir/src/common/TrieTree.cpp.o: CMakeFiles/search_common.dir/flags.make
+CMakeFiles/search_common.dir/src/common/TrieTree.cpp.o: ../src/common/TrieTree.cpp
+CMakeFiles/search_common.dir/src/common/TrieTree.cpp.o: CMakeFiles/search_common.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/root/SearchEngine/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object CMakeFiles/search_common.dir/src/common/TrieTree.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/search_common.dir/src/common/TrieTree.cpp.o -MF CMakeFiles/search_common.dir/src/common/TrieTree.cpp.o.d -o CMakeFiles/search_common.dir/src/common/TrieTree.cpp.o -c /root/SearchEngine/src/common/TrieTree.cpp
+
+CMakeFiles/search_common.dir/src/common/TrieTree.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/search_common.dir/src/common/TrieTree.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /root/SearchEngine/src/common/TrieTree.cpp > CMakeFiles/search_common.dir/src/common/TrieTree.cpp.i
+
+CMakeFiles/search_common.dir/src/common/TrieTree.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/search_common.dir/src/common/TrieTree.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /root/SearchEngine/src/common/TrieTree.cpp -o CMakeFiles/search_common.dir/src/common/TrieTree.cpp.s
+
 CMakeFiles/search_common.dir/src/common/WebPage.cpp.o: CMakeFiles/search_common.dir/flags.make
 CMakeFiles/search_common.dir/src/common/WebPage.cpp.o: ../src/common/WebPage.cpp
 CMakeFiles/search_common.dir/src/common/WebPage.cpp.o: CMakeFiles/search_common.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/root/SearchEngine/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object CMakeFiles/search_common.dir/src/common/WebPage.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/root/SearchEngine/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building CXX object CMakeFiles/search_common.dir/src/common/WebPage.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/search_common.dir/src/common/WebPage.cpp.o -MF CMakeFiles/search_common.dir/src/common/WebPage.cpp.o.d -o CMakeFiles/search_common.dir/src/common/WebPage.cpp.o -c /root/SearchEngine/src/common/WebPage.cpp
 
 CMakeFiles/search_common.dir/src/common/WebPage.cpp.i: cmake_force
@@ -130,6 +144,7 @@ search_common_OBJECTS = \
 "CMakeFiles/search_common.dir/src/common/Configuration.cpp.o" \
 "CMakeFiles/search_common.dir/src/common/Dictionary.cpp.o" \
 "CMakeFiles/search_common.dir/src/common/SplitToolCppJieba.cpp.o" \
+"CMakeFiles/search_common.dir/src/common/TrieTree.cpp.o" \
 "CMakeFiles/search_common.dir/src/common/WebPage.cpp.o"
 
 # External object files for target search_common
@@ -138,10 +153,11 @@ search_common_EXTERNAL_OBJECTS =
 libsearch_common.a: CMakeFiles/search_common.dir/src/common/Configuration.cpp.o
 libsearch_common.a: CMakeFiles/search_common.dir/src/common/Dictionary.cpp.o
 libsearch_common.a: CMakeFiles/search_common.dir/src/common/SplitToolCppJieba.cpp.o
+libsearch_common.a: CMakeFiles/search_common.dir/src/common/TrieTree.cpp.o
 libsearch_common.a: CMakeFiles/search_common.dir/src/common/WebPage.cpp.o
 libsearch_common.a: CMakeFiles/search_common.dir/build.make
 libsearch_common.a: CMakeFiles/search_common.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/root/SearchEngine/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Linking CXX static library libsearch_common.a"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/root/SearchEngine/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Linking CXX static library libsearch_common.a"
 	$(CMAKE_COMMAND) -P CMakeFiles/search_common.dir/cmake_clean_target.cmake
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/search_common.dir/link.txt --verbose=$(VERBOSE)
 

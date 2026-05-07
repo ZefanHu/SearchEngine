@@ -5,6 +5,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/search_common.dir/src/common/Dictionary.cpp.o.d"
   "CMakeFiles/search_common.dir/src/common/SplitToolCppJieba.cpp.o"
   "CMakeFiles/search_common.dir/src/common/SplitToolCppJieba.cpp.o.d"
+  "CMakeFiles/search_common.dir/src/common/TrieTree.cpp.o"
+  "CMakeFiles/search_common.dir/src/common/TrieTree.cpp.o.d"
   "CMakeFiles/search_common.dir/src/common/WebPage.cpp.o"
   "CMakeFiles/search_common.dir/src/common/WebPage.cpp.o.d"
   "libsearch_common.a"
