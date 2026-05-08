@@ -162,8 +162,8 @@ CMakeFiles/search_server.dir/clean:
 # Target rules for target CMakeFiles/build_index.dir
 
 # All Build rule for target.
-CMakeFiles/build_index.dir/all: CMakeFiles/search_offline.dir/all
 CMakeFiles/build_index.dir/all: CMakeFiles/search_common.dir/all
+CMakeFiles/build_index.dir/all: CMakeFiles/search_offline.dir/all
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/build_index.dir/build.make CMakeFiles/build_index.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/build_index.dir/build.make CMakeFiles/build_index.dir/build
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/root/SearchEngine/build/CMakeFiles --progress-num=1,2 "Built target build_index"

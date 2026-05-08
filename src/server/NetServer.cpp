@@ -9,7 +9,7 @@ NetServer::NetServer(int count) : _wait_group(count)
     for (int i = 0; i < 4; ++i)
     {
         _caches.push_back(std::unique_ptr<search::LRUCache<std::string, std::string>>(
-            new search::LRUCache<std::string, std::string>(100)));
+            new search::LRUCache<std::string, std::string>(std::stoi(Configuration::getInstance().getConfig("CacheSize")))));
     }
 }
 
@@ -51,7 +51,7 @@ void NetServer::loadStaticResourceMoudle()
 
                 [](const HttpReq *req, HttpResp *resp)
                 {
-                    resp->File("../data/static/index.html");
+                    resp->File(Configuration::getInstance().getConfig("static_resource"));
                 });
 }
 

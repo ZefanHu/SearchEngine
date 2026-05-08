@@ -14,7 +14,7 @@ DictProducer::DictProducer(LanguageType language, SplitTool *tool)
     const auto &config = Configuration::getInstance();
     string prefix = (_language == LanguageType::English) ? "en_" : "zh_";
 
-    _corpus_dir = config.getConfig(prefix + "corpus_dir" + (_language == LanguageType::Chinese ? "_dir" : ""));
+    _corpus_dir = config.getConfig(prefix + "corpus_dir");
     _stop_words_file = config.getConfig(prefix + "stop_words_file");
     _dict_file = config.getConfig(prefix + "dict.dat");
     _dict_index_file = config.getConfig(prefix + "dict_index.dat");
