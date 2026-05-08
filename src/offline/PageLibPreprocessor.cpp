@@ -114,7 +114,7 @@ bool PageLibPreprocessor::isDuplicateWebPage(uint64_t cur_page_figure_print)
 {
     for (const auto &print : _page_figure_print_ves)
     {
-        if (simhash::Simhasher::isEqual(cur_page_figure_print, print, 5)) // 将 3 改为 5 或更高的值
+        if (simhash::Simhasher::isEqual(cur_page_figure_print, print, 3))
         {
             return true;
         }
