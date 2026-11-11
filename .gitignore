@@ -1,0 +1,54 @@
+# ---- 构建产物 / 编译缓存 ----
+/build/
+/build-*/
+/cmake-build-*/
+/bin/
+/out/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+CTestTestfile.cmake
+Testing/
+_deps/
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.so.*
+*.dll
+*.dylib
+*.exe
+*.out
+*.pdb
+*.gch
+*.pch
+
+# ---- 离线建库生成的数据（可随时由 build_index 重新生成）----
+/data/index/
+# 模拟/真实的大体量语料不入库，只保留小样本 data/corpus/rss
+/data/corpus/gcp/
+*.dat
+*.idx
+
+# ---- 编辑器 / IDE ----
+.vscode/
+.idea/
+.vs/
+*.swp
+*.swo
+*~
+.clangd/
+.cache/
+
+# ---- Python ----
+__pycache__/
+*.pyc
+
+# ---- 系统文件 / 日志 ----
+.DS_Store
+Thumbs.db
+*.log
+core
+core.*

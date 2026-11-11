@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [main, cpp17-reference]
+  pull_request:
+
+jobs:
+  linux:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake libssl-dev zlib1g-dev libtinyxml2-dev curl
+
+      # search_server 依赖 Sogou Workflow 与 wfrest，二者都需要源码安装
+      - name: Install workflow + wfrest
+        run: |
+          git clone --depth 1 https://github.com/sogou/workflow.git /tmp/workflow
+          make -C /tmp/workflow -j"$(nproc)" && sudo make -C /tmp/workflow install
+          git clone --depth 1 https://github.com/wfrest/wfrest.git /tmp/wfrest
+          make -C /tmp/wfrest -j"$(nproc)" && sudo make -C /tmp/wfrest install
+          sudo ldconfig
+
+      - name: Configure & build
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build -j"$(nproc)"
+          test -x bin/search_server   # wfrest 已安装，HTTP 服务必须被构建出来
+
+      - name: Unit tests
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Offline build (RSS sample + mock BigQuery export)
+        run: |
+          python3 scripts/gen_mock_corpus.py --docs 5000
+          ./bin/build_index conf/search.conf
+
+      - name: Online smoke test
+        run: |
+          ./bin/search_server conf/search.conf &
+          SERVER_PID=$!
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:9000/ >/dev/null && break; sleep 1; done
+
+          curl -sf --get http://127.0.0.1:9000/search    --data-urlencode "query=海洋经济" | tee search.json
+          curl -sf --get http://127.0.0.1:9000/recommend --data-urlencode "query=中"       | tee recommend.json
+          python3 -c "import json; r=json.load(open('search.json'));    assert r and 'title' in r[0], r"
+          python3 -c "import json; r=json.load(open('recommend.json')); assert r and r[0].startswith('中'), r"
+
+          # 畸形输入必须得到 400，而不是把进程打挂
+          test "$(curl -s -o /dev/null -w '%{http_code}' 'http://127.0.0.1:9000/search?query=%zz')" = 400
+          test "$(curl -s -o /dev/null -w '%{http_code}' 'http://127.0.0.1:9000/search')" = 400
+          curl -sf --get http://127.0.0.1:9000/search --data-urlencode "query=经济" >/dev/null
+
+          kill -INT "$SERVER_PID"
+          wait "$SERVER_PID"   # 优雅退出，返回码应为 0

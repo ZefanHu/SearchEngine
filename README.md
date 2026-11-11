@@ -1,176 +1,122 @@
 # SearchEngine
 
-A high-performance C++ search engine backend built on top of **Sogou Workflow**
-and **Wfrest**. It provides two HTTP endpoints — full-text search over a
-preprocessed web page corpus and keyword recommendation by prefix — backed by
-an in-process sharded LRU cache and an asynchronous compute pipeline.
+基于 **C++17** 的轻量级搜索引擎：离线建库（清洗 → 分词 → SimHash 去重 → TF-IDF 倒排索引）＋
+在线服务（网页检索、关键词联想、分片 LRU 缓存、Workflow/wfrest 异步 HTTP）。
 
----
+> 本分支 `cpp17-reference` 是对原 C++11 版本的整体重构，定位是“可读、可复现的参考实现”。
+> 设计思路、阅读顺序与避坑总结见 **[ARCHITECTURE.md](ARCHITECTURE.md)**。
 
-## Core Features
+## 功能
 
-### Asynchronous Architecture
-Compute-heavy work (TF–IDF cosine similarity for `/search`, edit-distance
-ranking for `/recommend`) is dispatched to `WFGoTask` running on Workflow's
-dedicated `Go` thread pool. Network I/O threads stay free to accept new
-connections, and the response is committed inside the task's completion
-callback via the request's `SeriesWork`. No blocking `compute → respond`
-loop on the listener thread.
+| 模块 | 说明 |
+| --- | --- |
+| 语料接入 | 流式读取 BigQuery 导出的 NDJSON（`*.jsonl`）与 RSS XML（`*.xml`），按扩展名自动识别 |
+| 去重 | 64 位 SimHash 指纹 + 分块索引（抽屉原理），判重从 O(N²) 降到近似 O(N) |
+| 倒排索引 | L2 归一化 TF-IDF；二进制定长布局，在线端 `mmap` 后零解析、零拷贝使用 |
+| 网页检索 | 多路倒排链求交（AND，空则退化为 OR）＋ 余弦相似度 Top-K ＋ 命中词摘要 |
+| 关键词联想 | UTF-8 Trie 前缀补全（按词频）＋ 最小编辑距离纠错兜底 |
+| 缓存 | 线程安全、哈希分片的 LRU，缓存值用 `shared_ptr<const string>` 共享 |
+| HTTP 服务 | wfrest 路由；缓存命中走网络线程快速路径，未命中交给 `WFGoTask` 计算线程池 |
 
-### O(m) Prefix Lookup with a Trie
-The legacy `map<char, set<int>>` "single-character inverted index" has been
-replaced with a UTF-8 aware **prefix Trie** (`include/TrieTree.h`,
-`src/common/TrieTree.cpp`). The trie is built in memory once at startup by
-walking `_dict_freq_vec`. Each node carries a `std::set<int>` of dictionary
-indices, so `searchPrefix(query)` is O(m) in the number of UTF-8 characters
-of the query — independent of dictionary size — and returns the candidate
-set in a single pointer-chase walk.
-
-### Sharded In-Process LRU Cache
-A header-only thread-safe template `search::LRUCache<K, V>` (`include/LRUCache.h`)
-combines `std::list<pair<K,V>>` (head = MRU, tail = LRU) with
-`std::unordered_map<K, list_iterator>` for O(1) `get` / `put` and
-splice-based promotion. The server holds `std::vector<unique_ptr<LRUCache>>`
-of **4 shards × 100 entries**; each request hashes its query
-(`std::hash<std::string>`) into a shard, eliminating a single-mutex
-hotspot. This replaces the previous out-of-process Redis dependency,
-removing the network round-trip from the hot path entirely.
-
-### Clean Build & Modular Layout
-A single top-level `CMakeLists.txt` produces three targets:
-`search_common` (shared business code), `search_offline` (corpus build
-tools), and `search_server` (the HTTP service binary).
-
----
-
-## Project Layout
+## 目录结构
 
 ```
 SearchEngine/
 ├── CMakeLists.txt
-├── conf/myconf.conf          # runtime config (port, data paths, dict paths)
-├── data/                     # input corpus and generated dict / index files
-├── include/                  # public headers
-│   ├── Configuration.h  Dictionary.h  TrieTree.h  LRUCache.h
-│   ├── KeyRecommend.h   WebSearch.h   NetServer.h SearchEngineServer.h
-│   ├── PageLib.h        PageLibPreprocessor.h  DictProducer.h  DirScanner.h
-│   ├── SplitTool.h      SplitToolCppJieba.h    WebPage.h
-│   ├── nlohmann/        # vendored JSON library
-│   └── simhash/         # vendored cppjieba + simhash
-├── src/
-│   ├── common/    Configuration  Dictionary  SplitToolCppJieba  TrieTree  WebPage
-│   ├── offline/   DictProducer  PageLib  PageLibPreprocessor  DirScanner
-│   └── server/    main  NetServer  SearchEngineServer  KeyRecommend  WebSearch
-└── bin/                      # cmake places search_server here
+├── ARCHITECTURE.md            # 架构导读（先读这个）
+├── conf/search.conf           # 运行配置（相对路径以该文件所在目录为基准）
+├── apps/                      # 三个可执行程序的 main()
+│   ├── build_index.cpp        #   离线建库
+│   ├── search_server.cpp      #   HTTP 服务（需要 workflow + wfrest）
+│   └── search_cli.cpp         #   命令行查询（无网络依赖，便于调试）
+├── include/search/            # 头文件（接口 + 设计说明注释）
+│   ├── common/                #   Config / Log / Utf8 / MappedFile / BinaryWriter / Tokenizer / UrlCodec
+│   ├── index/                 #   IndexFormat（磁盘布局）/ PageStore / InvertedIndex
+│   ├── offline/               #   CorpusReader / HtmlCleaner / SimHash / IndexBuilder / IndexPipeline
+│   ├── online/                #   TrieTree / KeyRecommender / WebSearcher / LRUCache / SearchService
+│   └── server/                #   HttpServer
+├── src/                       # 与 include/search 一一对应的实现
+├── tests/unit_tests.cpp       # 单元测试（零依赖）
+├── scripts/gen_mock_corpus.py # 生成 BigQuery 导出格式的模拟语料
+├── third_party/               # cppjieba、simhash、nlohmann/json（原样保留，未修改）
+├── data/
+│   ├── jieba/                 #   分词词典
+│   ├── stopwords/             #   停用词
+│   ├── corpus/rss/            #   人民网 RSS 样例语料
+│   ├── corpus/gcp/            #   模拟/真实的 NDJSON 语料（不入库）
+│   └── index/                 #   build_index 的产物（不入库）
+└── web/index.html             # 演示前端
 ```
 
----
+## 构建
 
-## Build
+依赖：CMake ≥ 3.16、支持 C++17 的编译器（GCC ≥ 8 / Clang ≥ 7）。
 
-### Dependencies
-
-| Component        | Notes                                          |
-| ---------------- | ---------------------------------------------- |
-| CMake ≥ 3.10     | `apt install cmake`                            |
-| A C++11 compiler | `apt install build-essential` (g++ ≥ 5.4)      |
-| OpenSSL headers  | `apt install libssl-dev` (required by workflow)|
-| Sogou Workflow   | https://github.com/sogou/workflow — `make && sudo make install` |
-| Wfrest           | https://github.com/wfrest/wfrest — `make && sudo make install`  |
-| tinyxml2         | `apt install libtinyxml2-dev`                  |
-
-`cppjieba`, `simhash` and `nlohmann/json` are already vendored under
-`include/` — no extra setup required.
-
-### Compile
+| 依赖 | 用途 | 安装 |
+| --- | --- | --- |
+| tinyxml2 | 解析 RSS 语料 | `apt install libtinyxml2-dev`；找不到时 CMake 会自动拉取源码 |
+| [workflow](https://github.com/sogou/workflow) + [wfrest](https://github.com/wfrest/wfrest) | 仅 `search_server` 需要 | 源码 `make && sudo make install`（另需 `libssl-dev`） |
 
 ```bash
-mkdir build && cd build
-cmake ..
-make -j4
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j
+ctest --test-dir build --output-on-failure      # 单元测试
 ```
 
-Build artifacts:
+产物在 `bin/`：`build_index`、`search_cli`，以及（检测到 wfrest 时）`search_server`。
+没有安装 workflow/wfrest（例如在 Windows 上）时，CMake 会跳过 `search_server`，其余目标照常构建。
 
-- `bin/search_server` — the HTTP service
-- `build/libsearch_common.a`
-- `build/libsearch_offline.a`
-
----
-
-## Run
-
-The binary uses **relative paths** to locate the configuration file
-(`../conf/myconf.conf`) and static assets (`../data/...`), so it must be
-launched from inside `bin/`:
+## 运行
 
 ```bash
-cd bin
-./search_server
+# 1.（可选）生成 BigQuery 导出格式的模拟语料，默认 2 万篇，写入 data/corpus/gcp/
+python3 scripts/gen_mock_corpus.py
+python3 scripts/gen_mock_corpus.py --docs 1000000     # 百万级
+
+# 2. 离线建库：读取 data/corpus 下所有语料，生成 data/index/
+./bin/build_index conf/search.conf
+
+# 3a. 命令行查询（不需要 HTTP 服务）
+./bin/search_cli conf/search.conf search "海洋经济"
+./bin/search_cli conf/search.conf recommend "中"
+
+# 3b. 启动 HTTP 服务，浏览器打开 http://127.0.0.1:9000/
+./bin/search_server conf/search.conf
 ```
 
-On a clean start you should see the configuration count, then Wfrest's
-route registration:
+程序可以在任意目录下启动：配置文件里的相对路径都以配置文件所在目录为基准。
 
+### 替换为真实的 BigQuery 数据
+
+```sql
+EXPORT DATA OPTIONS (
+  uri = 'gs://my-bucket/news/news-*.jsonl', format = 'JSON', overwrite = true
+) AS
+SELECT url, title, body AS content FROM `my_project.my_dataset.news`;
 ```
-[ 配置加载完成 ] 总项数: 24
-[WFREST] GET    /search
-[WFREST] GET    /recommend
-[WFREST] GET    /
+
+```bash
+gsutil -m cp 'gs://my-bucket/news/news-*.jsonl' data/corpus/gcp/
+./bin/build_index conf/search.conf
 ```
 
-The default port is `9000` (configurable in `conf/myconf.conf`).
-
----
+只要求每行 JSON 含 `url`、`title`、`content` 三个字符串字段，其余字段会被忽略。
 
 ## HTTP API
 
-### `GET /recommend?query=<text>`
+| 接口 | 说明 | 返回 |
+| --- | --- | --- |
+| `GET /search?query=<文本>` | 网页检索，最多 `search_top_k` 条 | `[{"title","url","content","score"}, ...]` |
+| `GET /recommend?query=<前缀>` | 关键词联想，最多 `suggest_top_k` 条 | `["词1","词2", ...]` |
+| `GET /` | 演示页面 | HTML |
 
-Returns up to 10 dictionary entries whose words start with the given query
-prefix, ranked by edit distance and word frequency.
-
-```bash
-curl -s "http://127.0.0.1:9000/recommend?query=中"
-```
-
-```json
-["中","中人","中体","中了","中为","中作","中其","中且","中以","中介"]
-```
-
-### `GET /search?query=<text>`
-
-Tokenizes the query, filters stop words, scores candidate documents by
-cosine similarity over an L2-normalized TF–IDF inverted index, and returns
-the top-10 documents.
+参数缺失、超过 256 字节或百分号编码非法时返回 `400` 和 `{"error": "..."}`。
 
 ```bash
-curl -s "http://127.0.0.1:9000/search?query=就业"
+curl -s --get http://127.0.0.1:9000/search    --data-urlencode "query=海洋经济"
+curl -s --get http://127.0.0.1:9000/recommend --data-urlencode "query=中"
 ```
-
-```json
-[
-  {"title": "...", "url": "...", "content": "..."},
-  ...
-]
-```
-
-### `GET /`
-
-Serves `data/static/index.html` — the bundled demo front-end.
-
----
-
-## Caching Behavior
-
-Each query is hashed into one of 4 shards. On a miss, the request enqueues
-a `WFGoTask`; the task's callback both populates the shard
-(`LRUCache::put`) and commits the HTTP response. Subsequent identical
-queries hit the cache and skip the Go thread pool entirely — typical
-warm-cache latency is under 1 ms.
-
----
 
 ## License
 
-See [LICENSE](LICENSE).
+见 [LICENSE](LICENSE)。
