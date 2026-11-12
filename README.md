@@ -112,6 +112,17 @@ gsutil -m cp 'gs://my-bucket/news/news-*.jsonl' data/corpus/gcp/
 
 参数缺失、超过 256 字节或百分号编码非法时返回 `400` 和 `{"error": "..."}`。
 
+## 部署与高并发
+
+- **监听地址**：`listen_host` 默认 `127.0.0.1`，只允许本机访问；对外由 Caddy/Nginx 反向代理
+  （例如 Caddy：`search.example.com { reverse_proxy 127.0.0.1:9000 }`）。确实需要直接对外时改成 `0.0.0.0`。
+- **连接数**：`max_connections` 默认 2000（与 Workflow 默认值一致）。压测上万并发连接时，三处要一起调大：
+  1. `conf/search.conf` 里的 `max_connections`，例如 `20000`；
+  2. 进程文件描述符上限（每个连接占一个 fd）：`ulimit -n 65535`，systemd 服务里对应 `LimitNOFILE=65535`；
+  3. 内核全连接队列：`sudo sysctl -w net.core.somaxconn=4096`。
+
+  fd 上限低于 `max_connections` 时，`search_server` 启动会打印告警。
+
 ```bash
 curl -s --get http://127.0.0.1:9000/search    --data-urlencode "query=海洋经济"
 curl -s --get http://127.0.0.1:9000/recommend --data-urlencode "query=中"

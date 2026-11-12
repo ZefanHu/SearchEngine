@@ -114,7 +114,9 @@ Config Config::load(const fs::path& file) {
     kv.number<int>("simhash_max_distance", config.simhash_max_distance, 0, 3);
     kv.number<std::uint32_t>("suggest_min_df", config.suggest_min_df, 1, std::numeric_limits<std::int32_t>::max());
 
+    if (const auto* host = kv.find("listen_host")) config.listen_host = *host;
     kv.number<std::uint16_t>("port", config.port, 1, 65535);
+    kv.number<std::size_t>("max_connections", config.max_connections, 1, 1'000'000);
     kv.number<std::size_t>("search_top_k", config.search_top_k, 1, 100);
     kv.number<std::size_t>("suggest_top_k", config.suggest_top_k, 1, 100);
     kv.number<std::size_t>("snippet_bytes", config.snippet_bytes, 30, 4096);

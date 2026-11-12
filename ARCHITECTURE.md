@@ -293,7 +293,7 @@ sequenceDiagram
 | 顺序 | 文件 | 学习点 |
 | --- | --- | --- |
 | 21 | `UrlCodec.h`（在 common 下） | 把“可能抛异常的解析”改成返回 `optional` |
-| 22 | `HttpServer.h/.cpp` | Workflow 的 series/任务模型；网络线程与计算线程分离；lambda init-capture；优雅退出 |
+| 22 | `HttpServer.h/.cpp` | Workflow 的 series/任务模型；网络线程与计算线程分离；lambda init-capture；优雅退出；`max_connections` 与 fd 上限 |
 
 ### 最后：`tests/unit_tests.cpp`
 
@@ -406,6 +406,10 @@ SimHash 判重依赖“先来后到”，并行会让结果随线程调度变化
 9. **UTF-8 不能按字节处理。** 截断摘要、计算编辑距离、Trie 的边，都要在“字符”层面操作；面对脏数据，解码器必须保证总能前进且不越界。
 10. **比较器必须是严格弱序。** `comp(a, a)` 必须为 `false`；想要稳定可复现的 Top-K，就给相等的情况加一个决胜字段。
 11. **Windows 上注意换行符。** 词典/语料一旦被 Git 转成 CRLF，分词结果里就会混进 `\r`。仓库用 `.gitattributes` 强制 LF。
+12. **C10K 的瓶颈往往不在代码里，而在“上限”上。** epoll 让少量线程管理上万连接成为可能，但还要同时放开三道闸：
+    框架的 `max_connections`（Workflow 默认 2000）、进程的 fd 上限（`ulimit -n`，默认常为 1024）、内核的 `somaxconn`。
+    任何一道没放开，压测时的表现都是“连接数到某个整数就上不去”。`search_server` 启动时会检查 fd 上限并告警。
+13. **服务默认只监听 127.0.0.1。** 对外访问交给反向代理（HTTPS、限流、访问日志），不要把业务端口直接暴露到公网。
 
 ### 3.4 可以继续做的练习
 

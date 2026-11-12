@@ -45,6 +45,11 @@ jobs:
           SERVER_PID=$!
           for i in $(seq 1 30); do curl -sf http://127.0.0.1:9000/ >/dev/null && break; sleep 1; done
 
+          # 默认 listen_host = 127.0.0.1：只能监听在回环地址上，不能是 0.0.0.0
+          ss -ltn | tee listen.txt
+          grep -q '127.0.0.1:9000' listen.txt
+          ! grep -qE '(0\.0\.0\.0|\*|\[::\]):9000' listen.txt
+
           curl -sf --get http://127.0.0.1:9000/search    --data-urlencode "query=海洋经济" | tee search.json
           curl -sf --get http://127.0.0.1:9000/recommend --data-urlencode "query=中"       | tee recommend.json
           python3 -c "import json; r=json.load(open('search.json'));    assert r and 'title' in r[0], r"

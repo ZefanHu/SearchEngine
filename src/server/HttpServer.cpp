@@ -1,5 +1,7 @@
 #include "search/server/HttpServer.h"
 
+#include <sys/resource.h>
+
 #include <csignal>
 #include <exception>
 #include <optional>
@@ -21,6 +23,18 @@ constexpr const char* kJsonType = "application/json; charset=utf-8";
 WFFacilities::WaitGroup g_shutdown(1);
 void onSignal(int) { g_shutdown.done(); }
 
+// 每个 TCP 连接占用一个文件描述符。若进程的 fd 上限低于 max_connections，
+// 连接数还没到上限 accept() 就会因 EMFILE 失败——这是压测 C10K 时最常见的“隐形天花板”。
+void warnIfFdLimitTooLow(std::size_t max_connections) {
+    rlimit limit{};
+    if (getrlimit(RLIMIT_NOFILE, &limit) != 0) return;
+    constexpr rlim_t kReserved = 64;  // 留给监听 socket、索引文件、日志等
+    if (limit.rlim_cur != RLIM_INFINITY && limit.rlim_cur < max_connections + kReserved) {
+        log::warn("fd limit (ulimit -n = ", limit.rlim_cur, ") is lower than max_connections (", max_connections,
+                  "); raise it with `ulimit -n` or systemd LimitNOFILE");
+    }
+}
+
 void replyError(wfrest::HttpResp* response, int status, const char* message) {
     response->set_status(status);
     response->headers["Content-Type"] = kJsonType;
@@ -30,6 +44,7 @@ void replyError(wfrest::HttpResp* response, int status, const char* message) {
 }  // namespace
 
 HttpServer::HttpServer(const Config& config, SearchService& service) : config_(config), service_(service) {
+    server_.max_connections(config_.max_connections);
     registerRoutes();
 }
 
@@ -88,12 +103,14 @@ int HttpServer::run() {
     std::signal(SIGINT, onSignal);
     std::signal(SIGTERM, onSignal);
 
-    if (server_.start(config_.port) != 0) {
-        log::error("failed to listen on port ", config_.port, " (already in use?)");
+    warnIfFdLimitTooLow(config_.max_connections);
+    if (server_.start(config_.listen_host.c_str(), config_.port) != 0) {
+        log::error("failed to listen on ", config_.listen_host, ":", config_.port, " (address in use or invalid host?)");
         return 1;
     }
     server_.list_routes();
-    log::info("listening on http://0.0.0.0:", config_.port, "  (Ctrl+C to stop)");
+    log::info("listening on http://", config_.listen_host, ":", config_.port,
+              "  max_connections=", config_.max_connections, "  (Ctrl+C to stop)");
 
     g_shutdown.wait();
     log::info("shutting down ...");

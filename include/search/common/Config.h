@@ -10,6 +10,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <string>
 #include <vector>
 
 namespace search {
@@ -32,7 +33,12 @@ struct Config {
     std::uint32_t suggest_min_df = 2;
 
     // ---- 在线服务 ----
+    // 默认只监听本机：对外访问应经由 Caddy/Nginx 等反向代理（负责 HTTPS、限流），而不是直接暴露服务端口
+    std::string listen_host = "127.0.0.1";
     std::uint16_t port = 9000;
+    // 同时保持的最大连接数。Workflow 默认只有 2000，压测 C10K 时必须调大，
+    // 同时还要调大进程的文件描述符上限（ulimit -n / systemd 的 LimitNOFILE）
+    std::size_t max_connections = 2000;
     std::size_t search_top_k = 10;
     std::size_t suggest_top_k = 10;
     std::size_t snippet_bytes = 300;
