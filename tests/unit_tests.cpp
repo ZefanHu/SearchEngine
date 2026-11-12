@@ -12,6 +12,7 @@
 #include <thread>
 #include <vector>
 
+#include "search/common/MappedFile.h"
 #include "search/common/UrlCodec.h"
 #include "search/common/Utf8.h"
 #include "search/index/InvertedIndex.h"
@@ -216,6 +217,16 @@ TEST(lru_cache_eviction) {
     CHECK(!disabled.get("x") && disabled.size() == 0);
 }
 
+// 容量为 0 = 关闭缓存：读写都应该是空操作（实现上直接返回、不加锁），分片后也一样
+TEST(lru_cache_zero_capacity_is_disabled) {
+    ShardedLruCache<std::string, int> cache(0, 4);
+    for (int i = 0; i < 100; ++i) cache.put("key" + std::to_string(i), i);
+    CHECK(cache.size() == 0);
+    for (int i = 0; i < 100; ++i) CHECK(!cache.get("key" + std::to_string(i)));
+    cache.put("key1", 1);  // 重复写同一个 key 也不会留下任何东西
+    CHECK(!cache.get("key1") && cache.size() == 0);
+}
+
 TEST(sharded_lru_cache_concurrency) {
     ShardedLruCache<int, int> cache(1024, 8);
     std::vector<std::thread> threads;
@@ -233,6 +244,30 @@ TEST(sharded_lru_cache_concurrency) {
     }
     for (auto& thread : threads) thread.join();
     CHECK(cache.size() <= 1024);
+}
+
+// ------------------------------- MappedFile -------------------------------
+// 预读只是把数据提前读进页缓存，不能改变映射到的内容；空文件、提前取消都不能出错
+TEST(mapped_file_preload) {
+    const fs::path file = tempDir() / "mapped.bin";
+    std::string expected;
+    for (int i = 0; i < 3'000'000; ++i) expected += static_cast<char>('a' + i % 26);  // 约 3 MB，跨多个 1 MiB 分块
+    std::ofstream(file, std::ios::binary) << expected;
+
+    const MappedFile mapped(file);
+    std::atomic<bool> cancel{false};
+    CHECK(mapped.preload(cancel));       // 完整读完返回 true
+    CHECK(mapped.view() == expected);
+
+    cancel = true;
+    CHECK(!mapped.preload(cancel));      // 已取消：立刻返回 false
+    CHECK(mapped.view() == expected);
+
+    const fs::path empty = tempDir() / "empty.bin";
+    std::ofstream(empty, std::ios::binary).flush();
+    const MappedFile nothing(empty);
+    cancel = false;
+    CHECK(nothing.size() == 0 && nothing.preload(cancel));
 }
 
 // ------------------------- 网页库 / 倒排索引 读写往返 -------------------------

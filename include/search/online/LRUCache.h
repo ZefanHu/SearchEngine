@@ -10,7 +10,7 @@
 //   - put() 按值接收再 move 进容器：调用方传右值时全程零拷贝；
 //   - 缓存的 value 建议用 shared_ptr<const T>：拷贝出锁只是一次引用计数自增，
 //     不会在持锁期间复制几十 KB 的 JSON 字符串；
-//   - 容量为 0 时退化为“不缓存”，而不是每次 put 后立刻淘汰自己。
+//   - 容量为 0 时退化为“不缓存”：get/put 都直接返回、不加锁，而不是每次 put 后立刻淘汰自己。
 
 #include <cstddef>
 #include <functional>
@@ -33,6 +33,9 @@ public:
     LruCache& operator=(const LruCache&) = delete;
 
     std::optional<Value> get(const Key& key) {
+        // capacity_ 是 const，构造后不会变，所以这个判断不需要锁。
+        // 关闭缓存（容量 0）时每个请求仍会来查一次；不提前返回的话，就要为“查一张永远是空的表”付一次加锁的代价
+        if (capacity_ == 0) return std::nullopt;
         const std::lock_guard lock(mutex_);
         const auto it = index_.find(key);
         if (it == index_.end()) return std::nullopt;

@@ -222,7 +222,8 @@ sequenceDiagram
 
 - **去重效果**：100 万篇里注入了 49,765 篇转载，判重丢弃 48,083 篇，没有误杀（入库数 ≥ 原创数 950,235）。
   漏掉的那部分是“正文较短 + 末尾追加了署名”的转载，海明距离刚好超过阈值 3，这是 SimHash 固有的取舍。
-- **启动时间与数据量无关**：索引是 `mmap` 的，1 GB 的 `index.dat` 不需要“加载”。
+- **启动时间与数据量无关**：索引是 `mmap` 的，1 GB 的 `index.dat` 不需要“加载”。代价是冷启动后的第一批查询要等磁盘，
+  可以用 `preload_index = true` 在后台预读（实测数据见 [docs/BENCHMARK.md](docs/BENCHMARK.md) 6.5）。
 - **建库内存与倒排记录数成正比**（每条 8 字节 + vector 扩容余量）。这是当前实现的规模上限所在：
   千万级文档需要改成“分段落盘 + 多路归并”（SPIMI），见 3.4 节。
 - **建库的串行部分**（读文件、JSON 解析、去重、写盘）没有并行，16 线程相对单线程的整体加速比约 3.5 倍，
@@ -252,7 +253,7 @@ sequenceDiagram
 | --- | --- | --- |
 | 1 | `Utf8.h` | UTF-8 编码规则；`constexpr`；如何写“对任意脏输入都安全”的解码器 |
 | 2 | `Config.h/.cpp` | 强类型配置代替字符串 map；`std::filesystem`；`std::from_chars`；fail-fast |
-| 3 | `MappedFile.h/.cpp` | **RAII 的标准范例**：Rule of Five、`std::exchange` 实现移动语义 |
+| 3 | `MappedFile.h/.cpp` | **RAII 的标准范例**：Rule of Five、`std::exchange` 实现移动语义；`preload()` 与 `madvise` 的坑 |
 | 4 | `BinaryWriter.h/.cpp` | 成员声明顺序为什么重要；`static_assert` + `is_trivially_copyable` |
 | 5 | `Tokenizer.h/.cpp` | Pimpl + 前置声明隔离重型头文件；erase-remove 惯用法 |
 | 6 | `Log.h` | 折叠表达式 `(stream << ... << args)` |
@@ -282,18 +283,18 @@ sequenceDiagram
 
 | 顺序 | 文件 | 学习点 |
 | --- | --- | --- |
-| 16 | `LRUCache.h` | `list::splice` 实现 O(1) LRU；哈希分片降低锁竞争；模板类写在头文件 |
+| 16 | `LRUCache.h` | `list::splice` 实现 O(1) LRU；哈希分片降低锁竞争；模板类写在头文件；容量 0 时不加锁的快速返回 |
 | 17 | `TrieTree.h/.cpp` | 用“有序区间”代替每个节点的 `set<int>`；vector 下标代替裸指针；迭代器/引用失效 |
 | 18 | `KeyRecommender.h/.cpp` | 滚动数组编辑距离；固定容量 Top-K 堆；带自定义比较器的堆算法 |
 | 19 | `WebSearcher.h/.cpp` | 多路有序链求交（游标 + 二分）；余弦相似度；`partial_sort`；严格弱序 |
-| 20 | `SearchService.h/.cpp` | Facade；依赖注入代替单例；成员声明顺序即构造顺序；`shared_ptr<const T>` 共享只读数据 |
+| 20 | `SearchService.h/.cpp` | Facade；依赖注入代替单例；成员声明顺序即构造顺序；`shared_ptr<const T>` 共享只读数据；带取消标志的后台线程 |
 
 ### 第 5 站：HTTP 接入 `server/`
 
 | 顺序 | 文件 | 学习点 |
 | --- | --- | --- |
 | 21 | `UrlCodec.h`（在 common 下） | 把“可能抛异常的解析”改成返回 `optional` |
-| 22 | `HttpServer.h/.cpp` | Workflow 的 series/任务模型；网络线程与计算线程分离；lambda init-capture；优雅退出；`max_connections` 与 fd 上限 |
+| 22 | `HttpServer.h/.cpp` | Workflow 的 series/任务模型；网络线程与计算线程分离；lambda init-capture；优雅退出；`max_connections` 与 fd 上限（`setrlimit`） |
 
 ### 最后：`tests/unit_tests.cpp`
 
@@ -408,7 +409,14 @@ SimHash 判重依赖“先来后到”，并行会让结果随线程调度变化
 11. **Windows 上注意换行符。** 词典/语料一旦被 Git 转成 CRLF，分词结果里就会混进 `\r`。仓库用 `.gitattributes` 强制 LF。
 12. **C10K 的瓶颈往往不在代码里，而在“上限”上。** epoll 让少量线程管理上万连接成为可能，但还要同时放开三道闸：
     框架的 `max_connections`（Workflow 默认 2000）、进程的 fd 上限（`ulimit -n`，默认常为 1024）、内核的 `somaxconn`。
-    任何一道没放开，压测时的表现都是“连接数到某个整数就上不去”。`search_server` 启动时会检查 fd 上限并告警。
+    任何一道没放开，压测时的表现都是“连接数到某个整数就上不去”。其中 fd 上限最危险：实测它不够时，多出来的连接
+    会无声地卡在内核的 accept 队列里（客户端不报错、服务端没日志）。所以 `search_server` 启动时会自己把 fd 软上限
+    提到 `max_connections + 64`；硬上限也不够就拒绝启动——启动失败立刻能看到，无声卡住要到线上高峰才暴露。
+    注意这一步必须早于 Workflow 的初始化：它按“初始化那一刻”的 fd 上限分配内部的 fd 表。
+13. **`madvise(MADV_WILLNEED)` 不会预读整个大文件。** Linux 把单次预读量封顶在设备的 max(read_ahead_kb, max_sectors_kb)，
+    测试机上对 495 MiB 的文件调用一次只读进了 0.8%，而且不报错。想把 `mmap` 的文件整个读进页缓存，
+    只能分块调用，或者老老实实逐页读一遍（`MappedFile::preload` 两样都做，由后台线程执行）。
+    教训：**“建议类”的系统调用一定要测效果**，它们失败或被打折扣时不会告诉你。
 13. **服务默认只监听 127.0.0.1。** 对外访问交给反向代理（HTTPS、限流、访问日志），不要把业务端口直接暴露到公网。
 
 ### 3.4 可以继续做的练习

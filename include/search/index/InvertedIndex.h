@@ -43,6 +43,9 @@ class InvertedIndex {
 public:
     explicit InvertedIndex(const std::filesystem::path& path);  // 文件损坏时抛 std::runtime_error
 
+    // 把索引文件顺序读进页缓存（阻塞，供后台线程调用），见 MappedFile::preload
+    bool preload(const std::atomic<bool>& cancel) const noexcept { return file_.preload(cancel); }
+
     std::uint32_t docCount() const noexcept { return header_->doc_count; }
     std::uint32_t termCount() const noexcept { return header_->term_count; }
     std::uint64_t postingCount() const noexcept { return header_->posting_count; }

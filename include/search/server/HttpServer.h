@@ -20,6 +20,11 @@ namespace search {
 
 class HttpServer {
 public:
+    // 保证进程的 fd 上限装得下 max_connections 个连接：软上限不够就提高，硬上限也不够则报错并返回 false。
+    // 必须在进程里第一次用到 Workflow 之前调用（main 的开头）：Workflow 在初始化 poller 时
+    // 按“当时的”fd 软上限分配它的 fd 表，之后再提高上限，超出旧上限的 fd 仍然无法被它管理。
+    static bool ensureFdLimit(const Config& config);
+
     // service 的生命周期必须长于 HttpServer（由 main 保证）
     HttpServer(const Config& config, SearchService& service);
 

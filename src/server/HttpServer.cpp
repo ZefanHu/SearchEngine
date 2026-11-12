@@ -23,18 +23,6 @@ constexpr const char* kJsonType = "application/json; charset=utf-8";
 WFFacilities::WaitGroup g_shutdown(1);
 void onSignal(int) { g_shutdown.done(); }
 
-// 每个 TCP 连接占用一个文件描述符。若进程的 fd 上限低于 max_connections，
-// 连接数还没到上限 accept() 就会因 EMFILE 失败——这是压测 C10K 时最常见的“隐形天花板”。
-void warnIfFdLimitTooLow(std::size_t max_connections) {
-    rlimit limit{};
-    if (getrlimit(RLIMIT_NOFILE, &limit) != 0) return;
-    constexpr rlim_t kReserved = 64;  // 留给监听 socket、索引文件、日志等
-    if (limit.rlim_cur != RLIM_INFINITY && limit.rlim_cur < max_connections + kReserved) {
-        log::warn("fd limit (ulimit -n = ", limit.rlim_cur, ") is lower than max_connections (", max_connections,
-                  "); raise it with `ulimit -n` or systemd LimitNOFILE");
-    }
-}
-
 void replyError(wfrest::HttpResp* response, int status, const char* message) {
     response->set_status(status);
     response->headers["Content-Type"] = kJsonType;
@@ -42,6 +30,40 @@ void replyError(wfrest::HttpResp* response, int status, const char* message) {
 }
 
 }  // namespace
+
+// 每个 TCP 连接占用一个文件描述符，所以 fd 上限必须不低于 max_connections（再加一点余量）。
+//
+// 只打告警是不够的。压测里实际观察到的故障（docs/BENCHMARK.md 第 5 节）：fd 上限 1024、5000 个并发连接时，
+// 进程的 fd 用完后 accept() 一直失败，多出来的 3997 个连接完成了握手却永远卡在内核的 accept 队列里——
+// 客户端不报错、服务日志里也没有任何输出，是一种“无声”的故障。所以这里改成：
+//   - 软上限不够、硬上限够：自己把软上限提上去（不需要特权，等价于替用户执行了 ulimit -n）；
+//   - 硬上限也不够：明确报错并拒绝启动。启动失败是立刻能看到的；连接无声卡住要等到线上高峰才暴露。
+bool HttpServer::ensureFdLimit(const Config& config) {
+    constexpr rlim_t kReserved = 64;  // 留给监听 socket、epoll、日志、映射索引时短暂打开的文件等
+    const rlim_t needed = static_cast<rlim_t>(config.max_connections) + kReserved;
+
+    rlimit limit{};
+    if (getrlimit(RLIMIT_NOFILE, &limit) != 0) {
+        log::error("getrlimit(RLIMIT_NOFILE) failed");
+        return false;
+    }
+    if (limit.rlim_cur == RLIM_INFINITY || limit.rlim_cur >= needed) return true;
+
+    if (limit.rlim_max != RLIM_INFINITY && limit.rlim_max < needed) {
+        log::error("fd hard limit (", limit.rlim_max, ") is lower than max_connections + ", kReserved, " = ", needed,
+                   ". Raise it (`ulimit -Hn`, systemd LimitNOFILE=) or lower max_connections in the config.");
+        return false;
+    }
+
+    const rlim_t previous = limit.rlim_cur;
+    limit.rlim_cur = needed;
+    if (setrlimit(RLIMIT_NOFILE, &limit) != 0) {
+        log::error("cannot raise fd soft limit from ", previous, " to ", needed);
+        return false;
+    }
+    log::info("fd soft limit raised from ", previous, " to ", needed, " (max_connections=", config.max_connections, ")");
+    return true;
+}
 
 HttpServer::HttpServer(const Config& config, SearchService& service) : config_(config), service_(service) {
     server_.max_connections(config_.max_connections);
@@ -103,7 +125,6 @@ int HttpServer::run() {
     std::signal(SIGINT, onSignal);
     std::signal(SIGTERM, onSignal);
 
-    warnIfFdLimitTooLow(config_.max_connections);
     if (server_.start(config_.listen_host.c_str(), config_.port) != 0) {
         log::error("failed to listen on ", config_.listen_host, ":", config_.port, " (address in use or invalid host?)");
         return 1;

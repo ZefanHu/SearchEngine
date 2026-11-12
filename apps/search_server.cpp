@@ -11,6 +11,10 @@ int main(int argc, char** argv) {
     try {
         const search::Config config = search::Config::load(argc > 1 ? argv[1] : "conf/search.conf");
 
+        // 放在最前面：既要早于 Workflow 的初始化（原因见 HttpServer.h），
+        // 也没必要先花一秒加载词典和索引，再因为 fd 上限不够而退出。
+        if (!search::HttpServer::ensureFdLimit(config)) return EXIT_FAILURE;
+
         // 对象的构造顺序即依赖顺序：service 先于 server 构造、晚于 server 析构，
         // 保证 server 处理请求期间 service 始终有效。
         search::SearchService service(config);

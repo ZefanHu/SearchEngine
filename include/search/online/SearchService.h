@@ -10,10 +10,12 @@
 // 线程模型：构造完成后，除两个缓存（内部自带分片锁）外所有成员都是只读的，
 // search()/recommend() 可被任意多个线程同时调用。
 
+#include <atomic>
 #include <cstddef>
 #include <memory>
 #include <string>
 #include <string_view>
+#include <thread>
 
 #include "search/common/Config.h"
 #include "search/common/Tokenizer.h"
@@ -35,6 +37,11 @@ public:
     static constexpr std::size_t kMaxQueryBytes = 256;
 
     explicit SearchService(const Config& config);
+    ~SearchService();  // 需要先停掉并等待预读线程，见 preload_thread_
+
+    // 持有线程和原子变量，本来就不可拷贝/移动；显式写出来，意图更清楚
+    SearchService(const SearchService&) = delete;
+    SearchService& operator=(const SearchService&) = delete;
 
     // 只查缓存，不计算；未命中返回 nullptr。给 HTTP 层在网络线程上做“快速路径”用
     Response cachedSearch(std::string_view query);
@@ -68,6 +75,14 @@ private:
     KeyRecommender recommender_;
     Cache search_cache_;
     Cache recommend_cache_;
+
+    // preload_index = true 时的后台预读线程：把索引文件顺序读进页缓存，让重启后的第一批查询不用等磁盘。
+    // 放在后台是因为读完整个索引要几十秒（取决于磁盘），不能让它挡住启动；服务在预读期间已经可以正常应答，
+    // 只是还没读到的部分仍会按需缺页。
+    // 这两个成员必须声明在最后：线程里用到 index_ 和 pages_，要等它们构造完才能启动；
+    // 析构时则由 ~SearchService 先 join 线程，之后其它成员才开始析构。
+    std::atomic<bool> preload_cancel_{false};
+    std::thread preload_thread_;
 };
 
 }  // namespace search

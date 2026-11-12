@@ -62,3 +62,34 @@ jobs:
 
           kill -INT "$SERVER_PID"
           wait "$SERVER_PID"   # 优雅退出，返回码应为 0
+
+      # fd 上限不够时不能“带病启动”：软上限不够要自己提高，硬上限也不够要拒绝启动
+      - name: fd limit handling
+        run: |
+          sed 's/^max_connections = .*/max_connections = 5000/' conf/search.conf > conf/ci-fd.conf
+
+          # 硬上限 1024 < 5000 + 64：必须以非 0 退出，并且说明原因
+          ( ulimit -n 1024; ./bin/search_server conf/ci-fd.conf ) > refuse.log 2>&1 && { echo "server should have refused to start"; exit 1; }
+          grep -q 'fd hard limit' refuse.log
+
+          # 只降低软上限（-S），硬上限保持 runner 的默认值（远大于 5064）：服务要自己把软上限提到 5064 后正常启动
+          ( ulimit -Sn 1024; exec ./bin/search_server conf/ci-fd.conf ) > raise.log 2>&1 &
+          SERVER_PID=$!
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:9000/ >/dev/null && break; sleep 1; done
+          grep -q 'fd soft limit raised from 1024 to 5064' raise.log
+          grep 'Max open files' /proc/$SERVER_PID/limits | grep -q 5064
+          kill -INT "$SERVER_PID"
+          wait "$SERVER_PID"
+
+      # preload_index = true：后台预读线程要能正常跑完，服务照常应答、照常优雅退出
+      - name: Index preload
+        run: |
+          sed 's/^preload_index = .*/preload_index = true/' conf/search.conf > conf/ci-preload.conf
+          ./bin/search_server conf/ci-preload.conf > preload.log 2>&1 &
+          SERVER_PID=$!
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:9000/ >/dev/null && break; sleep 1; done
+          curl -sf --get http://127.0.0.1:9000/search --data-urlencode "query=经济" >/dev/null
+          for i in $(seq 1 30); do grep -q 'index preload finished' preload.log && break; sleep 1; done
+          grep 'index preload finished' preload.log
+          kill -INT "$SERVER_PID"
+          wait "$SERVER_PID"

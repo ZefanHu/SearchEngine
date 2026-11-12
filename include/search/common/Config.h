@@ -44,6 +44,8 @@ struct Config {
     std::size_t snippet_bytes = 300;
     std::size_t cache_capacity = 20000;
     std::size_t cache_shards = 16;
+    // 启动后用后台线程把索引文件顺序读进页缓存。默认关闭：索引比空闲内存大时，预读会挤掉别的进程的页缓存
+    bool preload_index = false;
     std::filesystem::path web_index;
 
     // ---- 由 index_dir 派生出的四个索引文件 ----

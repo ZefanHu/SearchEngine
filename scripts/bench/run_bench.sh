@@ -16,6 +16,9 @@
 #   c10k-maxconn   fd 都放开，max_connections 仍为 2000（单独观察这一道闸）
 #   c10k-tuned     fd 放开 + max_connections=20000（三道闸全部放开）
 #
+#   注意：c10k-default 和 c10k-srvlimit 复现的是提交 a57b73a 及更早版本的行为（fd 不够时只告警、照常启动）。
+#   之后的版本在硬上限不够时会拒绝启动，这两个阶段会在启动服务时直接报错退出——这正是修复后的预期表现。
+#
 # 环境变量：
 #   BASE_CONF     作为模板的配置文件，默认 conf/search.conf（脚本从它派生 conf/bench-*.conf）
 #   DURATION      每轮压测秒数，默认 30        GAP     轮与轮之间的间隔秒数，默认 10

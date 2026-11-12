@@ -1,5 +1,6 @@
 #include "search/common/MappedFile.h"
 
+#include <algorithm>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -128,5 +129,23 @@ MappedFile& MappedFile::operator=(MappedFile&& other) noexcept {
 #endif
 
 MappedFile::~MappedFile() { reset(); }
+
+bool MappedFile::preload(const std::atomic<bool>& cancel) const noexcept {
+    constexpr std::size_t kChunk = std::size_t{1} << 20;
+    constexpr std::size_t kPage = 4096;  // 步长比实际页大小小只是多读几次，不影响正确性
+    for (std::size_t offset = 0; offset < size_; offset += kChunk) {
+        if (cancel.load(std::memory_order_relaxed)) return false;
+        const std::size_t length = std::min(kChunk, size_ - offset);
+#ifndef _WIN32
+        // 只是“建议”：失败了也不影响正确性（下面的逐页读取照样会把数据读进来），所以不检查返回值
+        (void)::madvise(const_cast<char*>(data_) + offset, length, MADV_WILLNEED);
+#endif
+        // volatile：告诉编译器这次读取有副作用（触发缺页），不能因为“结果没人用”而整个优化掉
+        volatile char sink = 0;
+        for (std::size_t i = 0; i < length; i += kPage) sink = data_[offset + i];
+        (void)sink;
+    }
+    return true;
+}
 
 }  // namespace search

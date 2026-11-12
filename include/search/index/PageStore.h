@@ -49,6 +49,9 @@ class PageStore {
 public:
     PageStore(const std::filesystem::path& data_path, const std::filesystem::path& offset_path);
 
+    // 把两个文件顺序读进页缓存（阻塞，供后台线程调用），见 MappedFile::preload
+    bool preload(const std::atomic<bool>& cancel) const noexcept { return offsets_.preload(cancel) && data_.preload(cancel); }
+
     std::size_t size() const noexcept { return count_; }
 
     // 返回的 string_view 指向 mmap 内存，生命周期与 PageStore 对象相同。

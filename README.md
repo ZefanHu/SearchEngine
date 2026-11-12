@@ -121,7 +121,15 @@ gsutil -m cp 'gs://my-bucket/news/news-*.jsonl' data/corpus/gcp/
   2. 进程文件描述符上限（每个连接占一个 fd）：`ulimit -n 65535`，systemd 服务里对应 `LimitNOFILE=65535`；
   3. 内核全连接队列：`sudo sysctl -w net.core.somaxconn=4096`。
 
-  fd 上限低于 `max_connections` 时，`search_server` 启动会打印告警。
+  其中第 2 项 `search_server` 会自己处理：启动时如果 fd 软上限低于 `max_connections + 64`，它会用 `setrlimit`
+  把软上限提到所需值；硬上限也不够时打印错误并**拒绝启动**（退出码非 0），需要先调大硬上限
+  （`ulimit -Hn`、systemd 的 `LimitNOFILE=`）或调小 `max_connections`。
+  这样做是因为 fd 不够时的故障是无声的：多出来的连接会卡在内核的 accept 队列里，客户端和服务日志都没有报错。
+- **冷启动**：索引是 `mmap` 的，重启后数据要等第一次被查到才从磁盘读入，页缓存是冷的时候未命中查询要几百毫秒。
+  `preload_index = true` 会在启动后用后台线程把索引顺序读进页缓存（不拖慢启动）。读完大约需要
+  “索引大小 ÷ 磁盘顺序读速度”，读完之前发起的查询会和它抢磁盘。索引比空闲内存大时不要开。
+- **关闭缓存**：`cache_capacity = 0`，此时缓存的读写都直接返回、不加锁。
+- 压测方法、各项上限的实测表现见 **[docs/BENCHMARK.md](docs/BENCHMARK.md)**。
 
 ```bash
 curl -s --get http://127.0.0.1:9000/search    --data-urlencode "query=海洋经济"

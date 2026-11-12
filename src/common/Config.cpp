@@ -87,6 +87,19 @@ public:
         out = static_cast<Int>(parsed);
     }
 
+    // 可选的布尔项：只接受 true/false/1/0，写成别的（比如 yes）直接报错，而不是悄悄当成 false
+    void flag(const std::string& key, bool& out) const {
+        const auto* value = find(key);
+        if (value == nullptr) return;
+        if (*value == "true" || *value == "1") {
+            out = true;
+        } else if (*value == "false" || *value == "0") {
+            out = false;
+        } else {
+            throw std::runtime_error("invalid value for config key '" + key + "' (expected true/false): " + *value);
+        }
+    }
+
 private:
     fs::path base_dir_;
     std::unordered_map<std::string, std::string> values_;
@@ -122,6 +135,7 @@ Config Config::load(const fs::path& file) {
     kv.number<std::size_t>("snippet_bytes", config.snippet_bytes, 30, 4096);
     kv.number<std::size_t>("cache_capacity", config.cache_capacity, 0, 100'000'000);
     kv.number<std::size_t>("cache_shards", config.cache_shards, 1, 1024);
+    kv.flag("preload_index", config.preload_index);
 
     log::info("config loaded: ", fs::absolute(file).lexically_normal().string());
     return config;

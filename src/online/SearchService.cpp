@@ -1,6 +1,7 @@
 #include "search/online/SearchService.h"
 
 #include <algorithm>
+#include <chrono>
 #include <stdexcept>
 #include <vector>
 
@@ -64,6 +65,22 @@ SearchService::SearchService(const Config& config)
     }
     log::info("search service ready: docs=", pages_.size(), " terms=", index_.termCount(),
               " postings=", index_.postingCount());
+
+    // 线程放在构造函数的最后启动：前面任何一步抛异常时都还没有线程需要回收
+    if (config_.preload_index) {
+        preload_thread_ = std::thread([this] {
+            const auto started = std::chrono::steady_clock::now();
+            // 先读倒排索引（每次查询都要用，而且比网页库小），再读网页库（只在生成摘要时用）
+            const bool finished = index_.preload(preload_cancel_) && pages_.preload(preload_cancel_);
+            const std::chrono::duration<double> elapsed = std::chrono::steady_clock::now() - started;
+            log::info("index preload ", finished ? "finished" : "cancelled", " after ", elapsed.count(), "s");
+        });
+    }
+}
+
+SearchService::~SearchService() {
+    preload_cancel_.store(true);
+    if (preload_thread_.joinable()) preload_thread_.join();
 }
 
 std::string SearchService::normalizeQuery(std::string_view query) {
