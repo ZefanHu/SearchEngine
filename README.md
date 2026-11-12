@@ -38,6 +38,8 @@ SearchEngine/
 ├── src/                       # 与 include/search 一一对应的实现
 ├── tests/unit_tests.cpp       # 单元测试（零依赖）
 ├── scripts/gen_mock_corpus.py # 生成 BigQuery 导出格式的模拟语料
+├── scripts/import_zhwiki.py   # 中文维基百科 parquet → NDJSON（繁转简）
+├── scripts/bench/             # wrk 压测脚本，结果见 docs/BENCHMARK.md
 ├── third_party/               # cppjieba、simhash、nlohmann/json（原样保留，未修改）
 ├── data/
 │   ├── jieba/                 #   分词词典
@@ -101,6 +103,27 @@ gsutil -m cp 'gs://my-bucket/news/news-*.jsonl' data/corpus/gcp/
 ```
 
 只要求每行 JSON 含 `url`、`title`、`content` 三个字符串字段，其余字段会被忽略。
+
+### 导入中文维基百科
+
+`scripts/import_zhwiki.py` 把 Hugging Face 上 `wikimedia/wikipedia` 数据集的中文子集（parquet，CC BY-SA 3.0 / GFDL）
+转成同样格式的 NDJSON：跳过少于 200 字的条目，用固定随机种子抽 20 万篇，并用 OpenCC 把繁体统一转成简体
+（中文维基繁简混排，而 cppjieba 的词典是简体，不转换的话繁体条目用简体查询搜不到）。
+
+```bash
+mkdir -p data/corpus/zhwiki-parquet && cd data/corpus/zhwiki-parquet     # 6 个文件，共 1.6 GiB
+for i in 0 1 2 3 4 5; do
+  curl -fLO "https://huggingface.co/datasets/wikimedia/wikipedia/resolve/main/20231101.zh/train-0000$i-of-00006.parquet"
+done
+cd -
+
+python3 -m venv .venv && .venv/bin/pip install pyarrow opencc             # 依赖装在虚拟环境里
+.venv/bin/python scripts/import_zhwiki.py                                 # 写入 data/corpus/zhwiki/，约 630 MiB
+./bin/build_index conf/search.conf                                        # corpus_dir 下的所有语料一起建库
+```
+
+`corpus_dir` 会被递归扫描，中英文语料放在不同子目录即可混合建库。注意扫描**不会进入符号链接指向的目录**，
+但会读取符号链接指向的**文件**；想把别处的语料拼进来，请逐个文件建链接。
 
 ## HTTP API
 
