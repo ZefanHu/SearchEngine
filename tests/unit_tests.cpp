@@ -1,5 +1,6 @@
 // 零依赖的单元测试：覆盖所有“纯算法/数据结构”模块（不需要 jieba 词典，不需要网络）。
 // 运行：cd build && ctest --output-on-failure      或直接执行 ./build/unit_tests
+#include <algorithm>
 #include <atomic>
 #include <cmath>
 #include <cstdint>
@@ -125,6 +126,26 @@ TEST(simhash_fingerprint) {
     CHECK(computeSimHash(doc) == computeSimHash(doc));
     CHECK(hammingDistance(computeSimHash(doc), computeSimHash(near)) <= 3);
     CHECK(hammingDistance(computeSimHash(doc), computeSimHash(other)) > 10);
+}
+
+// 回归测试（来自真实语料的误杀）：两篇内容完全不同的短文档，只是都被同一个高频词主导
+// （例如成绩表和代码里的大量 "0"）。按原始词频加权时它们的指纹几乎相同；次线性权重下不应判重。
+TEST(simhash_not_dominated_by_one_frequent_term) {
+    TermFrequencies footballer{{"0", 30}};  // 30 个 "0" + 40 个各出现一次的词
+    TermFrequencies code_question{{"0", 18}};
+    for (int i = 0; i < 40; ++i) footballer.emplace_back("球员词" + std::to_string(i), 1);
+    for (int i = 0; i < 40; ++i) code_question.emplace_back("code" + std::to_string(i), 1);
+    std::sort(footballer.begin(), footballer.end());
+    std::sort(code_question.begin(), code_question.end());
+    CHECK(hammingDistance(computeSimHash(footballer), computeSimHash(code_question)) > 10);
+
+    // 反过来，真正的转载（正文相同，末尾多一句署名）仍然必须判重
+    TermFrequencies article;
+    for (int i = 0; i < 300; ++i) article.emplace_back("词" + std::to_string(1000 + i), 1 + i % 4);
+    TermFrequencies repost = article;
+    repost.emplace_back("责任编辑", 1);
+    std::sort(repost.begin(), repost.end());
+    CHECK(hammingDistance(computeSimHash(article), computeSimHash(repost)) <= 3);
 }
 
 // 性质测试：分块索引的判重结果必须与 O(N^2) 暴力比较完全一致
@@ -293,6 +314,33 @@ TEST(page_store_round_trip) {
         thrown = true;
     }
     CHECK(thrown);
+}
+
+// 标题加权：长的“主条目”（标题就是查询词）应当排在反复提到这个词的短文前面
+TEST(index_builder_title_weight) {
+    TermFrequencies main_article{{"红楼梦", 200}};  // 长文：200 次“红楼梦”，外加 2000 个各出现 5 次的其它词
+    for (int i = 0; i < 2000; ++i) main_article.emplace_back("词" + std::to_string(10000 + i), 5);
+    TermFrequencies short_mention{{"红楼梦", 14}};   // 短文：14 次“红楼梦”，外加 60 个各出现 2 次的其它词
+    for (int i = 0; i < 60; ++i) short_mention.emplace_back("村" + std::to_string(100 + i), 2);
+    std::sort(main_article.begin(), main_article.end());
+    std::sort(short_mention.begin(), short_mention.end());
+
+    const auto weights = [&](double title_weight) {
+        const fs::path path = tempDir() / "title_weight.dat";
+        IndexBuilder builder;
+        builder.addDocument(0, main_article, {"红楼梦"});    // 标题恰好是这个词
+        builder.addDocument(1, short_mention, {"村100"});    // 标题是别的词
+        builder.write(path, title_weight);
+        const InvertedIndex index(path);
+        const PostingList postings = index.find("红楼梦")->postings;
+        return std::pair<float, float>{postings.begin()[0].weight, postings.begin()[1].weight};
+    };
+
+    const auto [main_plain, short_plain] = weights(0.0);
+    CHECK(main_plain < short_plain);        // 不加权：短文反而得分更高（这正是要修的问题）
+    const auto [main_boosted, short_boosted] = weights(1.0);
+    CHECK(main_boosted > short_boosted);    // 加权后：主条目排在前面
+    CHECK(main_boosted > 0.70F);            // 单词标题的权重至少约为 1/sqrt(2)，正文里出现得多还会更高
 }
 
 TEST(inverted_index_round_trip) {

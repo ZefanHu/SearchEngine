@@ -12,6 +12,9 @@
 namespace search {
 namespace {
 
+constexpr std::uint32_t kMaxTermFrequency = (std::uint32_t{1} << 31) - 1;
+
+
 // 联想词典只收录“像词的词”：纯字母（>=2 个）或纯汉字，长度不超过 20 个字符。
 // 数字串、带标点的 token（"32022130."）不适合作为搜索建议。
 bool isSuggestable(std::string_view term) {
@@ -29,7 +32,7 @@ bool isSuggestable(std::string_view term) {
 
 }  // namespace
 
-void IndexBuilder::addDocument(DocId doc_id, const TermFrequencies& terms) {
+void IndexBuilder::addDocument(DocId doc_id, const TermFrequencies& terms, const std::vector<std::string>& title_terms) {
     if (doc_id < doc_count_) throw std::logic_error("IndexBuilder::addDocument: doc_id must be increasing");
     doc_count_ = doc_id + 1;
 
@@ -41,7 +44,9 @@ void IndexBuilder::addDocument(DocId doc_id, const TermFrequencies& terms) {
             terms_.push_back(&it->first);
             postings_.emplace_back();
         }
-        postings_[it->second].push_back({doc_id, frequency});
+        const bool in_title = std::binary_search(title_terms.begin(), title_terms.end(), term);
+        // 词频只有 31 位可用；单篇文档里一个词出现 20 亿次不可能发生，截断只是为了让位域赋值有明确定义
+        postings_[it->second].push_back({doc_id, std::min(frequency, kMaxTermFrequency), in_title ? 1U : 0U});
     }
     posting_count_ += terms.size();
 }
@@ -54,7 +59,7 @@ std::vector<std::uint32_t> IndexBuilder::sortedTermIds() const {
     return order;
 }
 
-void IndexBuilder::write(const std::filesystem::path& index_path) const {
+void IndexBuilder::write(const std::filesystem::path& index_path, double title_weight) const {
     const std::size_t term_count = terms_.size();
     if (term_count > std::numeric_limits<std::uint32_t>::max()) throw std::length_error("too many terms");
 
@@ -74,6 +79,24 @@ void IndexBuilder::write(const std::filesystem::path& index_path) const {
         }
     }
     for (double& norm : norms) norm = std::sqrt(norm);
+
+    // 2b. 标题加权：标题里的词额外加上 title_weight × 模长，然后重新计算模长（公式与理由见头文件）。
+    //     weightOf 是“加权后、归一化前”的权重，下面写盘时还要再用一次，所以抽成一个 lambda
+    const std::vector<double> body_norms = norms;
+    const auto weightOf = [&](std::size_t id, const RawPosting& posting) {
+        const double weight = static_cast<double>(posting.term_frequency) * idf[id];
+        return posting.in_title != 0 ? weight + title_weight * body_norms[posting.doc_id] : weight;
+    };
+    if (title_weight > 0.0) {
+        std::fill(norms.begin(), norms.end(), 0.0);
+        for (std::size_t id = 0; id < term_count; ++id) {
+            for (const RawPosting& posting : postings_[id]) {
+                const double weight = weightOf(id, posting);
+                norms[posting.doc_id] += weight * weight;
+            }
+        }
+        for (double& norm : norms) norm = std::sqrt(norm);
+    }
 
     // 3. 按词项字节序依次写出：文件头 → 词典表 → 倒排链 → 字符串池
     const std::vector<std::uint32_t> order = sortedTermIds();
@@ -102,7 +125,7 @@ void IndexBuilder::write(const std::filesystem::path& index_path) const {
         block.reserve(postings_[id].size());
         for (const RawPosting& posting : postings_[id]) {
             const double norm = norms[posting.doc_id];
-            const double weight = norm > 0.0 ? posting.term_frequency * idf[id] / norm : 0.0;
+            const double weight = norm > 0.0 ? weightOf(id, posting) / norm : 0.0;
             block.push_back({posting.doc_id, static_cast<float>(weight)});
         }
         writer.write(block.data(), block.size() * sizeof(Posting));

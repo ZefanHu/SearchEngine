@@ -126,6 +126,7 @@ Config Config::load(const fs::path& file) {
     kv.number<std::size_t>("build_batch_size", config.build_batch_size, 1, 1'000'000);
     kv.number<int>("simhash_max_distance", config.simhash_max_distance, 0, 3);
     kv.number<std::uint32_t>("suggest_min_df", config.suggest_min_df, 1, std::numeric_limits<std::int32_t>::max());
+    kv.number<std::uint32_t>("title_weight_percent", config.title_weight_percent, 0, 1000);
 
     if (const auto* host = kv.find("listen_host")) config.listen_host = *host;
     kv.number<std::uint16_t>("port", config.port, 1, 65535);

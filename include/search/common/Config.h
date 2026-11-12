@@ -31,6 +31,8 @@ struct Config {
     std::size_t build_batch_size = 2048;
     int simhash_max_distance = 3;
     std::uint32_t suggest_min_df = 2;
+    // 标题加权：给标题里的每个词额外加上“正文向量模长 × 该百分比”的权重（0 = 标题与正文同等对待），见 IndexBuilder.h
+    std::uint32_t title_weight_percent = 100;
 
     // ---- 在线服务 ----
     // 默认只监听本机：对外访问应经由 Caddy/Nginx 等反向代理（负责 HTTPS、限流），而不是直接暴露服务端口

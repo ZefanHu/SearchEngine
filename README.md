@@ -11,8 +11,8 @@
 | 模块 | 说明 |
 | --- | --- |
 | 语料接入 | 流式读取 BigQuery 导出的 NDJSON（`*.jsonl`）与 RSS XML（`*.xml`），按扩展名自动识别 |
-| 去重 | 64 位 SimHash 指纹 + 分块索引（抽屉原理），判重从 O(N²) 降到近似 O(N) |
-| 倒排索引 | L2 归一化 TF-IDF；二进制定长布局，在线端 `mmap` 后零解析、零拷贝使用 |
+| 去重 | 64 位 SimHash 指纹（次线性词频加权）+ 分块索引（抽屉原理），判重从 O(N²) 降到近似 O(N) |
+| 倒排索引 | L2 归一化 TF-IDF，标题词加权；二进制定长布局，在线端 `mmap` 后零解析、零拷贝使用 |
 | 网页检索 | 多路倒排链求交（AND，空则退化为 OR）＋ 余弦相似度 Top-K ＋ 命中词摘要 |
 | 关键词联想 | UTF-8 Trie 前缀补全（按词频）＋ 最小编辑距离纠错兜底 |
 | 缓存 | 线程安全、哈希分片的 LRU，缓存值用 `shared_ptr<const string>` 共享 |
@@ -107,8 +107,8 @@ gsutil -m cp 'gs://my-bucket/news/news-*.jsonl' data/corpus/gcp/
 ### 导入中文维基百科
 
 `scripts/import_zhwiki.py` 把 Hugging Face 上 `wikimedia/wikipedia` 数据集的中文子集（parquet，CC BY-SA 3.0 / GFDL）
-转成同样格式的 NDJSON：跳过少于 200 字的条目，用固定随机种子抽 20 万篇，并用 OpenCC 把繁体统一转成简体
-（中文维基繁简混排，而 cppjieba 的词典是简体，不转换的话繁体条目用简体查询搜不到）。
+转成同样格式的 NDJSON：跳过少于 200 字的条目（剩约 79 万篇，每 10 万篇一个分片），并把繁体统一转成简体、
+把台湾用词换成大陆用词（中文维基繁简混排，而 cppjieba 的词典是简体，不转换的话繁体条目用简体查询搜不到）。
 
 ```bash
 mkdir -p data/corpus/zhwiki-parquet && cd data/corpus/zhwiki-parquet     # 6 个文件，共 1.6 GiB
@@ -118,7 +118,8 @@ done
 cd -
 
 python3 -m venv .venv && .venv/bin/pip install pyarrow opencc             # 依赖装在虚拟环境里
-.venv/bin/python scripts/import_zhwiki.py                                 # 写入 data/corpus/zhwiki/，约 630 MiB
+.venv/bin/python scripts/import_zhwiki.py                                 # 写入 data/corpus/zhwiki/，约 2.5 GiB
+.venv/bin/python scripts/import_zhwiki.py --limit 20000                   # 或者只取前 2 万篇试一试
 ./bin/build_index conf/search.conf                                        # corpus_dir 下的所有语料一起建库
 ```
 

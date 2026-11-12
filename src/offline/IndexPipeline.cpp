@@ -26,6 +26,7 @@ struct PreparedDocument {
     std::string title;
     std::string content;
     TermFrequencies terms;
+    std::vector<std::string> title_terms;  // 标题里出现的词，升序且不重复
     std::uint64_t fingerprint = 0;
 };
 
@@ -35,13 +36,18 @@ void prepare(RawDocument& raw, const Tokenizer& tokenizer, PreparedDocument& out
     out.title = cleanHtml(raw.title);
     out.content = cleanHtml(raw.content);
 
-    // 标题与正文一起分词：标题里的词同样应该能被检索到
-    std::string text;
-    text.reserve(out.title.size() + 1 + out.content.size());
-    text.append(out.title).append(1, ' ').append(out.content);
+    // 标题和正文分开分词，这样才知道哪些词来自标题（建索引时标题词有额外权重，见 IndexBuilder.h）
+    std::vector<std::string> title_tokens = tokenizer.tokenize(out.title);
+    std::vector<std::string> tokens = tokenizer.tokenize(out.content);
+    tokens.insert(tokens.end(), title_tokens.begin(), title_tokens.end());  // 标题里的词同样应该能被检索到
 
-    out.terms = countTermFrequencies(tokenizer.tokenize(text));
+    out.terms = countTermFrequencies(std::move(tokens));
     out.fingerprint = computeSimHash(out.terms);
+
+    // 标题词表：排序去重，IndexBuilder 用二分查找判断“某个词是否出现在标题里”
+    std::sort(title_tokens.begin(), title_tokens.end());
+    title_tokens.erase(std::unique(title_tokens.begin(), title_tokens.end()), title_tokens.end());
+    out.title_terms = std::move(title_tokens);
 }
 
 // 把 [0, count) 分给 thread_count 个线程执行 task(i)。
@@ -120,7 +126,7 @@ BuildStats IndexPipeline::run() const {
                 continue;
             }
             const DocId doc_id = page_writer.append(doc.url, doc.title, doc.content);
-            index_builder.addDocument(doc_id, doc.terms);
+            index_builder.addDocument(doc_id, doc.terms, doc.title_terms);
         }
 
         if (++batch_number % 32 == 0) {  // 每 32 批打印一次进度，日志本身不能成为瓶颈
@@ -131,7 +137,7 @@ BuildStats IndexPipeline::run() const {
 
     page_writer.close();
     log::info("writing inverted index ...");
-    index_builder.write(config_.invertedIndexPath());
+    index_builder.write(config_.invertedIndexPath(), config_.title_weight_percent / 100.0);
     stats.suggest_words = index_builder.writeSuggestDict(config_.suggestDictPath(), config_.suggest_min_df);
 
     stats.documents_indexed = page_writer.size();

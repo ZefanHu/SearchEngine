@@ -1,5 +1,6 @@
 #include "search/offline/SimHash.h"
 
+#include <cmath>
 #include <stdexcept>
 #include <string_view>
 
@@ -22,6 +23,13 @@ std::uint64_t hashTerm(std::string_view term) noexcept {
     return hash;
 }
 
+// 权重 = 1 + log2(tf)，放大 256 倍后取整。
+// 用整数计票而不是直接累加 double：浮点加法的结果与累加顺序、编译选项有关，
+// 而整数加法在任何机器上都得到同一个结果——“同一份语料产出逐字节相同的索引”依赖这一点。
+std::int64_t termWeight(std::uint32_t frequency) noexcept {
+    return std::llround(256.0 * (1.0 + std::log2(static_cast<double>(frequency))));
+}
+
 }  // namespace
 
 std::uint64_t computeSimHash(const TermFrequencies& terms) noexcept {
@@ -29,8 +37,9 @@ std::uint64_t computeSimHash(const TermFrequencies& terms) noexcept {
     std::array<std::int64_t, 64> votes{};
     for (const auto& [term, frequency] : terms) {
         const std::uint64_t hash = hashTerm(term);
+        const std::int64_t weight = termWeight(frequency);
         for (int bit = 0; bit < 64; ++bit) {
-            votes[bit] += ((hash >> bit) & 1U) != 0 ? std::int64_t{frequency} : -std::int64_t{frequency};
+            votes[bit] += ((hash >> bit) & 1U) != 0 ? weight : -weight;
         }
     }
     // 票数为正的位记 1，得到最终指纹
