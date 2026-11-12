@@ -55,6 +55,10 @@ jobs:
           python3 -c "import json; r=json.load(open('search.json'));    assert r and 'title' in r[0], r"
           python3 -c "import json; r=json.load(open('recommend.json')); assert r and r[0].startswith('中'), r"
 
+          # /stats：索引规模，四个字段都是正整数
+          curl -sf http://127.0.0.1:9000/stats | tee stats.json
+          python3 -c "import json; r=json.load(open('stats.json')); assert all(isinstance(r[k], int) and r[k] > 0 for k in ('documents', 'terms', 'postings', 'suggest_words')), r"
+
           # 畸形输入必须得到 400，而不是把进程打挂
           test "$(curl -s -o /dev/null -w '%{http_code}' 'http://127.0.0.1:9000/search?query=%zz')" = 400
           test "$(curl -s -o /dev/null -w '%{http_code}' 'http://127.0.0.1:9000/search')" = 400

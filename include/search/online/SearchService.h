@@ -55,6 +55,10 @@ public:
 
     std::size_t documentCount() const noexcept { return pages_.size(); }
 
+    // 索引规模（只读，启动后不变）：
+    //   {"documents": N, "terms": N, "postings": N, "suggest_words": N}
+    std::string statsJson() const;
+
     // 把用户输入规整成缓存 key：去首尾空白、ASCII 转小写、修复非法 UTF-8。
     // "Hello " 与 "hello" 应当命中同一条缓存。
     static std::string normalizeQuery(std::string_view query);

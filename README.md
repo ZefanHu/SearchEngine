@@ -24,6 +24,7 @@
 SearchEngine/
 ├── CMakeLists.txt
 ├── ARCHITECTURE.md            # 架构导读（先读这个）
+├── deploy/                    # systemd 单元模板
 ├── conf/search.conf           # 运行配置（相对路径以该文件所在目录为基准）
 ├── apps/                      # 三个可执行程序的 main()
 │   ├── build_index.cpp        #   离线建库
@@ -132,6 +133,7 @@ python3 -m venv .venv && .venv/bin/pip install pyarrow opencc             # 依�
 | --- | --- | --- |
 | `GET /search?query=<文本>` | 网页检索，最多 `search_top_k` 条 | `[{"title","url","content","score"}, ...]` |
 | `GET /recommend?query=<前缀>` | 关键词联想，最多 `suggest_top_k` 条 | `["词1","词2", ...]` |
+| `GET /stats` | 索引规模（只读） | `{"documents","terms","postings","suggest_words"}` |
 | `GET /` | 演示页面 | HTML |
 
 参数缺失、超过 256 字节或百分号编码非法时返回 `400` 和 `{"error": "..."}`。
@@ -152,6 +154,10 @@ python3 -m venv .venv && .venv/bin/pip install pyarrow opencc             # 依�
 - **冷启动**：索引是 `mmap` 的，重启后数据要等第一次被查到才从磁盘读入，页缓存是冷的时候未命中查询要几百毫秒。
   `preload_index = true` 会在启动后用后台线程把索引顺序读进页缓存（不拖慢启动）。读完大约需要
   “索引大小 ÷ 磁盘顺序读速度”，读完之前发起的查询会和它抢磁盘。索引比空闲内存大时不要开。
+- **常驻服务**：[`deploy/search-engine.service`](deploy/search-engine.service) 是一份 systemd 单元模板
+  （失败自动重启、`LimitNOFILE`、CPU/内存上限、只读文件系统等加固），改掉里面的路径和用户后：
+  `sudo cp deploy/search-engine.service /etc/systemd/system/ && sudo systemctl daemon-reload && sudo systemctl enable --now search-engine`。
+  内存上限要按“索引文件大小 + 约 1 GiB”来留：索引是 `mmap` 的，它占的页缓存计入服务自己的 cgroup。
 - **关闭缓存**：`cache_capacity = 0`，此时缓存的读写都直接返回、不加锁。
 - 压测方法、各项上限的实测表现见 **[docs/BENCHMARK.md](docs/BENCHMARK.md)**。
 

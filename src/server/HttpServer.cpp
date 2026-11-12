@@ -75,6 +75,12 @@ void HttpServer::registerRoutes() {
         response->File(config_.web_index.string());
     });
 
+    // 索引规模，给首页展示用。内容在启动后不变，直接在网络线程上应答
+    server_.GET("/stats", [this](const wfrest::HttpReq*, wfrest::HttpResp* response) {
+        response->headers["Content-Type"] = kJsonType;
+        response->String(service_.statsJson());
+    });
+
     server_.GET("/search", [this](const wfrest::HttpReq* request, wfrest::HttpResp* response, SeriesWork* series) {
         handleQuery(Endpoint::Search, request, response, series);
     });

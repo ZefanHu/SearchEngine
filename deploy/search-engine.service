@@ -1,0 +1,63 @@
+# systemd 单元模板：把 search_server 作为常驻服务运行。
+#
+# 用法（把下面三处 /opt/SearchEngine 换成仓库的实际路径，User/Group 换成实际的运行用户）：
+#   sudo cp deploy/search-engine.service /etc/systemd/system/search-engine.service
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now search-engine      # enable = 开机自启，--now = 现在就启动
+#   systemctl status search-engine; journalctl -u search-engine -f
+#
+# 服务只应监听 127.0.0.1（conf 里 listen_host = 127.0.0.1），对外由 Caddy/Nginx 反向代理。
+
+[Unit]
+Description=SearchEngine HTTP server (search_server)
+After=network.target
+
+[Service]
+Type=simple
+User=search
+Group=search
+WorkingDirectory=/opt/SearchEngine
+ExecStart=/opt/SearchEngine/bin/search_server /opt/SearchEngine/conf/search.conf
+# 进程收到 SIGTERM 会停止接收新连接、等进行中的请求处理完再退出
+KillSignal=SIGTERM
+TimeoutStopSec=30
+Restart=on-failure
+RestartSec=5
+
+# ---- 资源限制 ----
+# fd 上限必须 >= max_connections + 64，否则服务拒绝启动（见 ARCHITECTURE.md）
+LimitNOFILE=65535
+CPUQuota=200%
+Nice=5
+# 注意：索引是 mmap 的，它占用的页缓存【计入】本服务的 cgroup（cgroup v2 按“谁先读进来”记账）。
+# 所以上限要按“索引文件大小 + 约 1 GiB 进程自身内存”来留，而不是只看进程的 RSS。
+# MemoryHigh 是软上限：超过后内核开始回收本服务的页缓存（查询变慢但不会被杀）；
+# MemoryMax 是硬上限：回收不下来才会 OOM kill。
+MemoryHigh=8G
+MemoryMax=10G
+
+# ---- 加固：服务只需要读文件和监听一个 TCP 端口 ----
+NoNewPrivileges=true
+# 整个文件系统只读（索引、配置、词典都只读打开；日志写到 stderr，由 journald 收集）
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+SystemCallArchitectures=native
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+[Install]
+WantedBy=multi-user.target

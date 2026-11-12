@@ -133,6 +133,13 @@ SearchService::Response SearchService::recommend(std::string_view query) {
     return response;
 }
 
+std::string SearchService::statsJson() const {
+    return dump(Json{{"documents", pages_.size()},
+                     {"terms", index_.termCount()},
+                     {"postings", index_.postingCount()},
+                     {"suggest_words", recommender_.wordCount()}});
+}
+
 std::string SearchService::buildSearchJson(const std::string& query) const {
     Json array = Json::array();
     if (query.empty() || query.size() > kMaxQueryBytes) return dump(array);

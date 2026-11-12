@@ -1,421 +1,649 @@
 <!doctype html>
 <html lang="zh-CN">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="robots" content="noindex">
   <title>SearchEngine</title>
+  <!--
+    单文件前端：没有构建步骤，也不引用任何外部资源（脚本、样式、字体、图片都没有），
+    所以可以配一条很严的 CSP：default-src 'none' + 只放行本页的内联脚本/样式和同源接口。
 
+    安全约定（重要）：检索结果的摘要来自用户贴的代码，里面有 <script>、<div onclick=...> 之类的内容。
+    本文件里所有来自接口的文本都只通过 textContent / createTextNode 写进 DOM，
+    从不拼接 HTML 字符串，也从不使用 innerHTML / insertAdjacentHTML / document.write。
+    高亮是“先切分纯文本、再逐段建节点”，不是在 HTML 上做字符串替换。
+  -->
   <style>
-    /* ========== 重置 / 基础排版 ========== */
+    :root {
+      --bg: #f7f6f3;
+      --surface: #ffffff;
+      --text: #1c1b19;
+      --muted: #6b6860;
+      --faint: #98948a;
+      --line: #e4e1d9;
+      --accent: #0f6e63;
+      --accent-strong: #0a5a51;
+      --accent-soft: #e2f1ee;
+      --link: #17508f;
+      --mark-bg: #ffe9a8;
+      --mark-text: #2b2200;
+      --danger: #a3362b;
+      --shadow: 0 1px 2px rgba(28, 27, 25, .05), 0 8px 24px rgba(28, 27, 25, .07);
+      --radius: 14px;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #131416;
+        --surface: #1c1e21;
+        --text: #e9e7e2;
+        --muted: #a29f97;
+        --faint: #76736c;
+        --line: #2d3034;
+        --accent: #4fc4b4;
+        --accent-strong: #74d6c8;
+        --accent-soft: #17302d;
+        --link: #8ebcf2;
+        --mark-bg: #5c4a10;
+        --mark-text: #ffeebd;
+        --danger: #f0897d;
+        --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .35);
+      }
+    }
+
     *, *::before, *::after { box-sizing: border-box; }
-    html, body { margin: 0; padding: 0; }
+    html { -webkit-text-size-adjust: 100%; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
-                   "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
-                   Roboto, Helvetica, Arial, sans-serif;
-      color: #1f2328;
-      background: #fafbfc;
+      margin: 0;
       min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg);
+      color: var(--text);
+      font: 16px/1.6 system-ui, -apple-system, "Segoe UI", "PingFang SC", "Hiragino Sans GB",
+            "Microsoft YaHei", "Noto Sans CJK SC", Roboto, Helvetica, Arial, sans-serif;
       -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
     }
-    a { color: inherit; text-decoration: none; }
+    a { color: var(--link); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-    /* ==========  外层容器：用 padding-top 做"居中 → 顶部"的过渡 ========== */
-    .app {
-      max-width: 720px;
+    .page {
+      flex: 1;
+      width: 100%;
+      max-width: 760px;
       margin: 0 auto;
-      padding: calc(40vh - 80px) 20px 80px;
-      transition: padding-top 0.45s cubic-bezier(.2, .9, .3, 1);
+      padding: 18vh 16px 32px;
     }
-    body.searched .app {
-      padding-top: 28px;
-    }
+    body.searched .page { padding-top: 20px; }
 
-    /* ========== 站点标题 ==========
-       初始巨大居中，进入搜索状态后缩小并左对齐 */
+    /* ---------- 标题 ---------- */
     .brand {
-      margin: 0 0 32px;
-      font-size: 64px;
-      font-weight: 600;
-      letter-spacing: -1px;
-      color: #111;
+      display: block;
+      margin: 0 0 6px;
+      font-size: clamp(34px, 9vw, 52px);
+      font-weight: 700;
+      letter-spacing: -.03em;
+      line-height: 1.1;
       text-align: center;
-      transition: font-size 0.45s cubic-bezier(.2, .9, .3, 1),
-                  margin    0.45s cubic-bezier(.2, .9, .3, 1),
-                  text-align 0s 0.2s;
+      color: var(--text);
     }
-    body.searched .brand {
-      font-size: 26px;
-      margin: 0 0 16px;
-      text-align: left;
-    }
+    .brand:hover { text-decoration: none; }
+    .brand span { color: var(--accent); }
+    .tagline { margin: 0 0 28px; text-align: center; color: var(--muted); font-size: 14px; }
+    body.searched .brand { font-size: 22px; text-align: left; margin-bottom: 12px; }
+    body.searched .tagline { display: none; }
 
-    /* ========== 搜索框 ========== */
-    .search-box { position: relative; }
-
+    /* ---------- 搜索框 ---------- */
+    .search { position: relative; }
     .search-row {
       display: flex;
       align-items: center;
-      gap: 8px;
-      background: #fff;
-      border: 1px solid #e5e7eb;
-      border-radius: 28px;
-      padding: 4px 6px 4px 22px;
-      box-shadow: 0 1px 6px rgba(32, 33, 36, 0.06);
-      transition: box-shadow 0.2s ease, border-color 0.2s ease;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      transition: border-color .15s;
     }
-    .search-row:focus-within {
-      border-color: #2563eb;
-      box-shadow: 0 4px 16px rgba(37, 99, 235, 0.12);
-    }
+    .search-row:focus-within { border-color: var(--accent); }
     .search-input {
       flex: 1;
-      min-width: 0;          /* 防止 flex 收缩问题 */
+      min-width: 0;
       border: 0;
       outline: 0;
       background: transparent;
       color: inherit;
-      font-size: 16px;
-      padding: 12px 0;
+      font: inherit;
+      font-size: 17px;      /* 不小于 16px：否则 iOS 聚焦时会自动放大页面 */
+      padding: 14px 8px 14px 18px;
     }
+    .search-input::placeholder { color: var(--faint); }
+    .search-input::-webkit-search-cancel-button { display: none; }
     .search-btn {
+      flex: none;
+      margin: 6px;
+      padding: 9px 18px;
       border: 0;
-      background: #2563eb;
+      border-radius: 10px;
+      background: var(--accent);
       color: #fff;
-      font-size: 14px;
-      font-weight: 500;
-      padding: 9px 22px;
-      border-radius: 22px;
+      font: inherit;
+      font-size: 15px;
+      font-weight: 600;
       cursor: pointer;
-      transition: background-color 0.15s ease, transform 0.08s ease;
     }
-    .search-btn:hover  { background: #1d4ed8; }
-    .search-btn:active { transform: scale(0.97); }
+    .search-btn:hover { background: var(--accent-strong); }
+    @media (prefers-color-scheme: dark) { .search-btn { color: #0c1a18; } }
 
-    /* ========== 推荐下拉 ========== */
-    .dropdown {
+    /* ---------- 联想下拉 ---------- */
+    .suggest {
       position: absolute;
+      z-index: 10;
       top: calc(100% + 6px);
       left: 0;
       right: 0;
-      max-height: 360px;
+      margin: 0;
+      padding: 6px;
+      list-style: none;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      max-height: min(60vh, 420px);
       overflow-y: auto;
-      background: #fff;
-      border: 1px solid #e5e7eb;
-      border-radius: 14px;
-      box-shadow: 0 8px 24px rgba(32, 33, 36, 0.10);
-      display: none;
-      z-index: 50;
     }
-    .dropdown.show { display: block; }
-    .dropdown-item {
-      padding: 10px 22px;
-      font-size: 15px;
-      color: #334155;
+    .suggest[hidden] { display: none; }
+    .suggest li {
+      padding: 9px 12px;
+      border-radius: 9px;
       cursor: pointer;
-      transition: background-color 0.12s ease;
+      overflow-wrap: anywhere;
     }
-    .dropdown-item:hover,
-    .dropdown-item.active {
-      background: #f1f5f9;
+    .suggest li[aria-selected="true"] { background: var(--accent-soft); }
+    .suggest .typed { color: var(--muted); }
+
+    /* ---------- 首页：示例与规模 ---------- */
+    .home { margin-top: 26px; text-align: center; }
+    body.searched .home { display: none; }
+    .examples { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 0; padding: 0; list-style: none; }
+    .chip {
+      padding: 6px 13px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--surface);
+      color: var(--text);
+      font: inherit;
+      font-size: 14px;
+      cursor: pointer;
     }
+    .chip:hover { border-color: var(--accent); color: var(--accent-strong); }
+    .stats { margin: 22px 0 0; color: var(--faint); font-size: 13px; font-variant-numeric: tabular-nums; }
+    .stats:empty { display: none; }
 
-    /* ========== 提示文案，搜索后隐藏 ========== */
-    .hint {
-      margin-top: 14px;
-      text-align: center;
-      color: #94a3b8;
-      font-size: 12.5px;
+    /* ---------- 结果 ---------- */
+    .meta { margin: 18px 2px 0; color: var(--muted); font-size: 13.5px; font-variant-numeric: tabular-nums; }
+    .meta:empty { display: none; }
+    .results { margin: 6px 0 0; padding: 0; list-style: none; }
+    .result { padding: 16px 2px; border-bottom: 1px solid var(--line); }
+    .result:last-child { border-bottom: 0; }
+    .result-head { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 12.5px; color: var(--muted); }
+    .source {
+      flex: none;
+      padding: 1px 7px;
+      border-radius: 5px;
+      background: var(--accent-soft);
+      color: var(--accent-strong);
+      font-weight: 600;
     }
-    body.searched .hint { display: none; }
-
-    /* ========== 结果列表 ========== */
-    .results { margin-top: 24px; }
-
-    .result-card {
-      padding: 18px 0;
-      border-bottom: 1px solid #f1f5f9;
-    }
-    .result-card:last-child { border-bottom: 0; }
-
+    .result-url { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .score { flex: none; margin-left: auto; font-variant-numeric: tabular-nums; color: var(--faint); }
     .result-title {
       display: inline-block;
-      font-size: 19px;
-      font-weight: 500;
-      line-height: 1.4;
-      color: #1d4ed8;
+      margin: 3px 0 2px;
+      font-size: 18.5px;
+      font-weight: 600;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
     }
-    .result-title:hover { text-decoration: underline; }
-
-    .result-url {
-      display: block;
-      margin-top: 4px;
-      color: #16a34a;
-      font-size: 13px;
-      word-break: break-all;
-    }
-
-    .result-content {
-      margin: 8px 0 0;
-      color: #475569;
+    .result-title:visited { color: var(--link); opacity: .8; }
+    .snippet {
+      margin: 0;
+      color: var(--muted);
       font-size: 14.5px;
       line-height: 1.65;
-      /* 三行截断 */
+      overflow-wrap: anywhere;
       display: -webkit-box;
-      -webkit-line-clamp: 3;
       -webkit-box-orient: vertical;
+      -webkit-line-clamp: 4;
       overflow: hidden;
     }
+    mark { background: var(--mark-bg); color: var(--mark-text); border-radius: 3px; padding: 0 1px; }
+    .result-title mark { background: none; color: inherit; padding: 0; text-decoration: underline; text-decoration-color: var(--accent); text-underline-offset: 3px; }
 
-    /* ========== 状态块（loading / empty / error 通用） ========== */
-    .state {
-      padding: 56px 0;
+    /* ---------- 状态：加载 / 空 / 错误 ---------- */
+    .state { margin: 0; padding: 48px 8px; text-align: center; color: var(--muted); }
+    .state strong { display: block; margin-bottom: 4px; color: var(--text); font-size: 17px; overflow-wrap: anywhere; }
+    .state.error strong { color: var(--danger); }
+    .skeleton { padding: 16px 2px; border-bottom: 1px solid var(--line); }
+    .skeleton i { display: block; height: 12px; margin: 9px 0; border-radius: 6px; background: var(--line); animation: pulse 1.2s ease-in-out infinite; }
+    .skeleton i:nth-child(1) { width: 30%; }
+    .skeleton i:nth-child(2) { width: 62%; height: 16px; }
+    .skeleton i:nth-child(3) { width: 96%; }
+    .skeleton i:nth-child(4) { width: 80%; }
+    @keyframes pulse { 50% { opacity: .45; } }
+    @media (prefers-reduced-motion: reduce) { .skeleton i { animation: none; } }
+
+    /* ---------- 页脚 ---------- */
+    footer {
+      width: 100%;
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 18px 16px 26px;
+      color: var(--faint);
+      font-size: 12.5px;
+      line-height: 1.7;
       text-align: center;
-      color: #6b7280;
-      font-size: 15px;
     }
-    .spinner {
-      display: inline-block;
-      width: 28px;
-      height: 28px;
-      margin-bottom: 12px;
-      border: 3px solid #e5e7eb;
-      border-top-color: #2563eb;
-      border-radius: 50%;
-      animation: spin 0.85s linear infinite;
-      vertical-align: middle;
+    footer a { color: var(--muted); text-decoration: underline; text-underline-offset: 2px; }
+    body.searched footer { text-align: left; border-top: 1px solid var(--line); }
+
+    @media (max-width: 480px) {
+      .page { padding-top: 11vh; }
+      .search-btn { padding: 9px 14px; }
+      .score { display: none; }           /* 窄屏上把位置让给 URL */
+      .result-title { font-size: 17.5px; }
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 
 <body>
-  <div class="app">
-    <h1 class="brand">Search</h1>
+  <main class="page">
+    <a class="brand" href="/" id="brand">Search<span>Engine</span></a>
+    <p class="tagline">C++17 全文检索 · 中英文混合语料</p>
 
-    <div class="search-box">
-      <!-- form 让回车键自然触发 submit，无需手动监听 keypress -->
-      <form class="search-row" id="search-form" autocomplete="off">
-        <input
-          id="search-input"
-          class="search-input"
-          type="text"
-          placeholder="输入关键词，回车搜索"
-          autocomplete="off"
-          spellcheck="false"
-        />
+    <div class="search">
+      <form class="search-row" id="form" role="search" autocomplete="off">
+        <input class="search-input" id="input" type="search" name="q" maxlength="80"
+               placeholder="输入关键词，中英文均可" aria-label="搜索"
+               role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="suggest"
+               autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="search">
         <button class="search-btn" type="submit">搜索</button>
       </form>
-
-      <!-- 推荐词下拉，由 JS 动态填充 -->
-      <div id="recommend-dropdown" class="dropdown" role="listbox"></div>
+      <ul class="suggest" id="suggest" role="listbox" aria-label="联想词" hidden></ul>
     </div>
 
-    <p class="hint">提示：输入关键词时会智能补全相关词条</p>
+    <section class="home" aria-label="示例查询">
+      <ul class="examples" id="examples"></ul>
+      <p class="stats" id="stats"></p>
+    </section>
 
-    <!-- 结果区：状态块 / 卡片列表都渲染在这里 -->
-    <section id="results" class="results"></section>
-  </div>
+    <p class="meta" id="meta" role="status" aria-live="polite"></p>
+    <div id="output"></div>
+  </main>
+
+  <footer>
+    数据来源：<a href="https://stackoverflow.com/" target="_blank" rel="noopener noreferrer">Stack Overflow</a> 提问约 100 万篇 +
+    <a href="https://zh.wikipedia.org/" target="_blank" rel="noopener noreferrer">中文维基百科</a>约 78 万篇，
+    内容依 <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.zh-hans" target="_blank" rel="noopener noreferrer">CC BY-SA</a> 许可使用，版权归原作者所有。<br>
+    源代码：<a href="https://github.com/ZefanHu/SearchEngine" target="_blank" rel="noopener noreferrer">GitHub</a>
+  </footer>
 
   <script>
-    'use strict';
+  'use strict';
 
-    /* ========== DOM 引用 ========== */
-    const $body     = document.body;
-    const $form     = document.getElementById('search-form');
-    const $input    = document.getElementById('search-input');
-    const $dropdown = document.getElementById('recommend-dropdown');
-    const $results  = document.getElementById('results');
+  const EXAMPLES = ['人工智能', '红楼梦', '量子力学', '北京大学', 'Linux 内核',
+                    'segmentation fault', 'python list comprehension', 'git merge conflict'];
+  const SUGGEST_DEBOUNCE_MS = 150;
+  const MAX_QUERY_BYTES = 256;          // 与服务端 SearchService::kMaxQueryBytes 一致
 
-    /* ========== 工具函数 ========== */
+  const $ = (id) => document.getElementById(id);
+  const input = $('input'), suggestBox = $('suggest'), meta = $('meta'), output = $('output');
 
-    // 防抖：在 wait 毫秒静默期内只执行最后一次调用
-    function debounce(fn, wait) {
-      let timer = null;
-      return function (...args) {
-        if (timer) clearTimeout(timer);
-        timer = setTimeout(() => fn.apply(this, args), wait);
-      };
-    }
+  /* ---------- DOM 小工具：只有这一个地方创建元素，文本一律走 textContent ---------- */
+  function el(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text != null) node.textContent = String(text);
+    return node;
+  }
+  function clear(node) { node.replaceChildren(); }
 
-    // 服务端字段渲染前转义，避免 XSS
-    function escapeHtml(s) {
-      return String(s == null ? '' : s)
-        .replace(/&/g,  '&amp;')
-        .replace(/</g,  '&lt;')
-        .replace(/>/g,  '&gt;')
-        .replace(/"/g,  '&quot;')
-        .replace(/'/g,  '&#39;');
-    }
-
-    /* ========== 推荐下拉 ========== */
-
-    async function fetchRecommend(query) {
-      try {
-        const res = await fetch(`/recommend?query=${encodeURIComponent(query)}`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        return Array.isArray(data) ? data : [];
-      } catch (err) {
-        // 推荐失败属于次要功能，仅记录、不打扰用户
-        console.warn('[recommend] failed:', err);
-        return [];
+  /* ---------- 高亮 ----------
+     接口不返回分词结果，这里按查询串自己推出要高亮的词：
+       - 按空白切开，每一段整体作为一个词（不区分大小写）；
+       - 连续汉字超过 2 个时，再加上它的所有相邻两字（“唐朝诗人” → 唐朝 / 朝诗 / 诗人），
+         近似服务端 jieba 的切分；多出来的“朝诗”几乎不会在正文里出现，不影响观感。
+     做法是在“纯文本”上找出命中区间，再一段一段建文本节点和 <mark>，全程不经过 HTML 字符串。 */
+  function highlightPattern(query) {
+    const terms = new Set();
+    for (const piece of query.toLowerCase().split(/\s+/)) {
+      if (!piece) continue;
+      terms.add(piece);
+      for (const run of piece.match(/[㐀-鿿]{3,}/g) || []) {
+        for (let i = 0; i + 2 <= run.length; i++) terms.add(run.slice(i, i + 2));
       }
     }
+    // 单个 ASCII 字符（如 “c”）会把整段摘要涂满，不高亮
+    const usable = [...terms].filter((term) => term.length > 1 || term.charCodeAt(0) > 0x7f);
+    if (!usable.length) return null;
+    usable.sort((a, b) => b.length - a.length);       // 长词优先匹配
+    const escaped = usable.map((term) => term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    return new RegExp(escaped.join('|'), 'gi');
+  }
 
-    function renderDropdown(words) {
-      if (!words.length) {
-        hideDropdown();
-        return;
+  function appendHighlighted(parent, text, pattern) {
+    text = String(text == null ? '' : text);
+    if (!pattern) { parent.append(document.createTextNode(text)); return; }
+    let last = 0;
+    pattern.lastIndex = 0;
+    for (let match; (match = pattern.exec(text)) !== null;) {
+      if (match[0].length === 0) { pattern.lastIndex++; continue; }
+      if (match.index > last) parent.append(document.createTextNode(text.slice(last, match.index)));
+      parent.append(el('mark', '', match[0]));
+      last = match.index + match[0].length;
+    }
+    if (last < text.length) parent.append(document.createTextNode(text.slice(last)));
+  }
+
+  /* ---------- 结果渲染 ---------- */
+  // 语料里的 URL 也是不可信数据：只有 http/https 才作为链接，其它（javascript: 等）一律不给 href
+  function safeUrl(raw) {
+    try {
+      const url = new URL(String(raw));
+      return url.protocol === 'https:' || url.protocol === 'http:' ? url : null;
+    } catch { return null; }
+  }
+  function sourceOf(url) {
+    if (!url) return '';
+    if (url.hostname === 'stackoverflow.com' || url.hostname.endsWith('.stackoverflow.com')) return 'Stack Overflow';
+    if (url.hostname.endsWith('wikipedia.org')) return '维基百科';
+    return url.hostname;
+  }
+  function displayUrl(url, raw) {
+    if (!url) return String(raw || '');
+    let path = url.pathname;
+    try { path = decodeURIComponent(path); } catch { /* 保留原样 */ }
+    return url.hostname + path;
+  }
+
+  function renderResults(list, query) {
+    const pattern = highlightPattern(query);
+    const items = el('ol', 'results');
+    for (const item of list) {
+      const url = safeUrl(item.url);
+      const row = el('li', 'result');
+
+      const head = el('div', 'result-head');
+      const source = sourceOf(url);
+      if (source) head.append(el('span', 'source', source));
+      head.append(el('span', 'result-url', displayUrl(url, item.url)));
+      if (typeof item.score === 'number') {
+        const score = el('span', 'score', '相关度 ' + item.score.toFixed(3));
+        score.title = 'TF-IDF 余弦相似度';
+        head.append(score);
       }
-      $dropdown.innerHTML = words
-        .map(w => `<div class="dropdown-item" role="option">${escapeHtml(w)}</div>`)
-        .join('');
-      $dropdown.classList.add('show');
+
+      const title = el(url ? 'a' : 'span', 'result-title');
+      if (url) { title.href = url.href; title.target = '_blank'; title.rel = 'noopener noreferrer'; }
+      appendHighlighted(title, item.title || '（无标题）', pattern);
+
+      const snippet = el('p', 'snippet');
+      appendHighlighted(snippet, item.content, pattern);
+
+      row.append(head, title, snippet);
+      items.append(row);
+    }
+    output.replaceChildren(items);
+  }
+
+  function renderState(kind, headline, detail) {
+    const box = el('div', 'state' + (kind === 'error' ? ' error' : ''));
+    if (kind === 'error') box.setAttribute('role', 'alert');
+    box.append(el('strong', '', headline));
+    if (detail) box.append(document.createTextNode(detail));
+    output.replaceChildren(box);
+  }
+
+  function renderLoading() {
+    const box = el('div');
+    box.setAttribute('aria-hidden', 'true');
+    for (let i = 0; i < 4; i++) {
+      const row = el('div', 'skeleton');
+      row.append(el('i'), el('i'), el('i'), el('i'));
+      box.append(row);
+    }
+    output.replaceChildren(box);
+  }
+
+  /* ---------- 检索 ---------- */
+  let searchAbort = null;
+
+  async function search(query, { push = true } = {}) {
+    query = query.trim();
+    if (!query) return showHome(push);
+
+    input.value = query;
+    closeSuggest();
+    document.body.classList.add('searched');
+    document.title = query + ' - SearchEngine';
+    if (push) {
+      const target = '/?q=' + encodeURIComponent(query);
+      if (location.pathname + location.search !== target) history.pushState(null, '', target);
     }
 
-    function hideDropdown() {
-      $dropdown.classList.remove('show');
-      $dropdown.innerHTML = '';
+    if (searchAbort) searchAbort.abort();
+    const abort = searchAbort = new AbortController();
+
+    if (new TextEncoder().encode(query).length > MAX_QUERY_BYTES) {
+      meta.textContent = '';
+      return renderState('error', '查询太长了', '请缩短到 ' + MAX_QUERY_BYTES + ' 字节以内（约 85 个汉字）。');
     }
 
-    // 输入事件 + 300ms 防抖
-    const onInputDebounced = debounce(async () => {
-      const q = $input.value.trim();
-      if (!q) { hideDropdown(); return; }
+    meta.textContent = '';
+    const loadingTimer = setTimeout(renderLoading, 120);   // 很快返回时不闪一下骨架屏
+    const started = performance.now();
+    try {
+      const response = await fetch('/search?query=' + encodeURIComponent(query),
+                                   { signal: abort.signal, headers: { Accept: 'application/json' } });
+      const body = await response.json().catch(() => null);
+      const elapsed = performance.now() - started;
+      clearTimeout(loadingTimer);
+      if (abort.signal.aborted) return;
 
-      const words = await fetchRecommend(q);
-      // 用户在请求过程中又改了输入，丢弃这次结果
-      if (q !== $input.value.trim()) return;
-      renderDropdown(words);
-    }, 300);
+      if (response.status >= 400 && response.status < 500) {
+        const reason = body && typeof body.error === 'string' ? body.error : 'HTTP ' + response.status;
+        return renderState('error', '这个查询无法处理', '服务器返回：' + reason);
+      }
+      if (!response.ok || !Array.isArray(body)) {
+        return renderState('error', '服务器出错了', '请稍后再试（HTTP ' + response.status + '）。');
+      }
+      if (body.length === 0) {
+        return renderState('empty', '没有找到“' + query + '”的相关结果',
+                           '多个词之间是“与”的关系，试试减少关键词，或换一种说法。');
+      }
+      meta.textContent = '约 ' + body.length + ' 条结果，用时 ' + formatMs(elapsed);
+      renderResults(body, query);
+    } catch (error) {
+      clearTimeout(loadingTimer);
+      if (error.name === 'AbortError') return;
+      renderState('error', '网络请求失败', '请检查网络连接后重试。');
+    }
+  }
 
-    $input.addEventListener('input', onInputDebounced);
+  function formatMs(ms) { return (ms < 10 ? ms.toFixed(1) : Math.round(ms)) + ' ms'; }
 
-    // 点击下拉项 → 直接发起搜索
-    $dropdown.addEventListener('click', (e) => {
-      const item = e.target.closest('.dropdown-item');
-      if (!item) return;
-      $input.value = item.textContent;
-      hideDropdown();
-      doSearch();
+  function showHome(push) {
+    if (searchAbort) searchAbort.abort();
+    document.body.classList.remove('searched');
+    document.title = 'SearchEngine';
+    meta.textContent = '';
+    clear(output);
+    input.value = '';
+    closeSuggest();
+    if (push && location.search) history.pushState(null, '', '/');
+  }
+
+  /* ---------- 联想下拉 ----------
+     /recommend 按“前缀”联想一个词，所以只把输入的最后一段发过去，选中后也只替换最后一段。 */
+  let suggestTimer = 0, suggestAbort = null, suggestions = [], active = -1, typed = '';
+
+  function splitLast(value) {
+    const cut = value.search(/\S+$/);
+    return cut < 0 ? [value, ''] : [value.slice(0, cut), value.slice(cut)];
+  }
+
+  function closeSuggest() {
+    clearTimeout(suggestTimer);
+    if (suggestAbort) suggestAbort.abort();
+    suggestions = [];
+    active = -1;
+    suggestBox.hidden = true;
+    clear(suggestBox);
+    input.setAttribute('aria-expanded', 'false');
+    input.removeAttribute('aria-activedescendant');
+  }
+
+  function openSuggest(words, head, prefix) {
+    suggestions = words.map((word) => head + word);
+    active = -1;
+    clear(suggestBox);
+    suggestions.forEach((full, index) => {
+      const item = el('li');
+      item.id = 'suggest-' + index;
+      item.setAttribute('role', 'option');
+      item.setAttribute('aria-selected', 'false');
+      const word = words[index];
+      if (head) item.append(el('span', 'typed', head));
+      // 已输入的前缀用浅色，补全出来的部分用正常颜色
+      if (word.toLowerCase().startsWith(prefix.toLowerCase())) {
+        item.append(el('span', 'typed', word.slice(0, prefix.length)), document.createTextNode(word.slice(prefix.length)));
+      } else {
+        item.append(document.createTextNode(word));
+      }
+      // mousedown 而不是 click：赶在输入框失焦（会关掉下拉）之前
+      item.addEventListener('mousedown', (event) => { event.preventDefault(); search(full); });
+      suggestBox.append(item);
     });
+    suggestBox.hidden = false;
+    input.setAttribute('aria-expanded', 'true');
+  }
 
-    // 失焦点击空白处关闭下拉
-    document.addEventListener('click', (e) => {
-      if (!e.target.closest('.search-box')) hideDropdown();
-    });
-
-    // 键盘上下方向 + 回车选中下拉项
-    $input.addEventListener('keydown', (e) => {
-      if (!$dropdown.classList.contains('show')) return;
-      const items = Array.from($dropdown.querySelectorAll('.dropdown-item'));
-      if (!items.length) return;
-
-      let idx = items.findIndex(it => it.classList.contains('active'));
-
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        idx = (idx + 1) % items.length;
-        items.forEach(it => it.classList.remove('active'));
-        items[idx].classList.add('active');
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        idx = (idx - 1 + items.length) % items.length;
-        items.forEach(it => it.classList.remove('active'));
-        items[idx].classList.add('active');
-      } else if (e.key === 'Enter' && idx >= 0) {
-        // 高亮项存在时，回车走"选中下拉项"分支，阻止 form 默认提交
-        e.preventDefault();
-        $input.value = items[idx].textContent;
-        hideDropdown();
-        doSearch();
-      } else if (e.key === 'Escape') {
-        hideDropdown();
-      }
-    });
-
-    /* ========== 搜索主流程 ========== */
-
-    async function fetchSearch(query) {
-      const res = await fetch(`/search?query=${encodeURIComponent(query)}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const text = await res.text();
-      // 后端在空查询时返回 "No query result"（非 JSON），先尝试解析失败则视为空
-      try {
-        const data = JSON.parse(text);
-        return Array.isArray(data) ? data : [];
-      } catch {
-        return [];
-      }
+  function setActive(index) {
+    const items = suggestBox.children;
+    if (active >= 0) items[active].setAttribute('aria-selected', 'false');
+    active = index;
+    if (active >= 0) {
+      items[active].setAttribute('aria-selected', 'true');
+      items[active].scrollIntoView({ block: 'nearest' });
+      input.setAttribute('aria-activedescendant', items[active].id);
+      input.value = suggestions[active];
+    } else {
+      input.removeAttribute('aria-activedescendant');
+      input.value = typed;                         // 回到用户自己输入的内容
     }
+  }
 
-    function showLoading() {
-      $results.innerHTML = `
-        <div class="state">
-          <div class="spinner"></div>
-          <div>正在搜索...</div>
-        </div>`;
+  async function fetchSuggestions() {
+    const value = input.value;
+    const [head, prefix] = splitLast(value);
+    if (!prefix) return closeSuggest();
+    if (suggestAbort) suggestAbort.abort();
+    const abort = suggestAbort = new AbortController();
+    try {
+      const response = await fetch('/recommend?query=' + encodeURIComponent(prefix), { signal: abort.signal });
+      if (!response.ok) return closeSuggest();     // 联想是次要功能，失败了就不显示
+      const words = await response.json();
+      if (abort.signal.aborted || input.value !== value || document.activeElement !== input) return;
+      const usable = Array.isArray(words) ? words.filter((word) => typeof word === 'string' && word) : [];
+      // 唯一的候选就是已经输入的内容时，下拉没有信息量
+      if (!usable.length || (usable.length === 1 && usable[0] === prefix)) return closeSuggest();
+      typed = value;
+      openSuggest(usable, head, prefix);
+    } catch { /* 被取消或网络错误：忽略 */ }
+  }
+
+  input.addEventListener('input', () => {
+    clearTimeout(suggestTimer);
+    typed = input.value;
+    if (!input.value.trim()) return closeSuggest();
+    suggestTimer = setTimeout(fetchSuggestions, SUGGEST_DEBOUNCE_MS);
+  });
+
+  input.addEventListener('keydown', (event) => {
+    if (event.isComposing || event.keyCode === 229) return;   // 输入法选字时的上下/回车不归我们管
+    const count = suggestions.length;
+    if (event.key === 'ArrowDown' && count) {
+      event.preventDefault();
+      setActive(active + 1 >= count ? -1 : active + 1);
+    } else if (event.key === 'ArrowUp' && count) {
+      event.preventDefault();
+      setActive(active < 0 ? count - 1 : active - 1);
+    } else if (event.key === 'Escape' && count) {
+      event.preventDefault();
+      input.value = typed;
+      closeSuggest();
     }
+    // 回车交给表单的 submit：此时输入框里已经是选中的候选词
+  });
 
-    function showEmpty() {
-      $results.innerHTML = `
-        <div class="state">
-          <div>未找到相关结果，换个关键词试试</div>
-        </div>`;
+  input.addEventListener('blur', closeSuggest);
+
+  $('form').addEventListener('submit', (event) => {
+    event.preventDefault();
+    search(input.value);
+  });
+
+  $('brand').addEventListener('click', (event) => {
+    if (event.metaKey || event.ctrlKey || event.shiftKey) return;
+    event.preventDefault();
+    showHome(true);
+    input.focus();
+  });
+
+  // “/” 聚焦搜索框
+  document.addEventListener('keydown', (event) => {
+    if (event.key === '/' && document.activeElement !== input && !event.metaKey && !event.ctrlKey && !event.altKey) {
+      event.preventDefault();
+      input.focus();
+      input.select();
     }
+  });
 
-    function showError(msg) {
-      $results.innerHTML = `
-        <div class="state">
-          <div>请求出错：${escapeHtml(msg)}</div>
-        </div>`;
-    }
+  /* ---------- 首页 ---------- */
+  for (const example of EXAMPLES) {
+    const item = el('li');
+    const chip = el('button', 'chip', example);
+    chip.type = 'button';
+    chip.addEventListener('click', () => search(example));
+    item.append(chip);
+    $('examples').append(item);
+  }
 
-    function renderResults(list) {
-      if (!list || !list.length) return showEmpty();
+  async function loadStats() {
+    try {
+      const response = await fetch('/stats');
+      if (!response.ok) return;
+      const stats = await response.json();
+      const number = (value) => Number(value).toLocaleString('zh-CN');
+      if (![stats.documents, stats.terms, stats.postings].every(Number.isFinite)) return;
+      $('stats').textContent = '已索引 ' + number(stats.documents) + ' 篇文档 · ' + number(stats.terms) +
+                               ' 个词项 · ' + number(stats.postings) + ' 条倒排记录';
+    } catch { /* 规模信息只是装饰，拿不到就不显示 */ }
+  }
 
-      $results.innerHTML = list.map(item => {
-        const title   = escapeHtml(item.title   || '(无标题)');
-        const url     = escapeHtml(item.url     || '#');
-        const content = escapeHtml(item.content || '');
-        return `
-          <article class="result-card">
-            <a class="result-title"
-               href="${url}"
-               target="_blank"
-               rel="noopener noreferrer">${title}</a>
-            <span class="result-url">${url}</span>
-            <p class="result-content">${content}</p>
-          </article>`;
-      }).join('');
-    }
+  /* ---------- 路由：查询放在 ?q= 里，结果页可以收藏、分享、前进后退 ---------- */
+  function route() {
+    const query = new URLSearchParams(location.search).get('q') || '';
+    if (query.trim()) search(query, { push: false });
+    else showHome(false);
+  }
+  window.addEventListener('popstate', route);
 
-    async function doSearch() {
-      const q = $input.value.trim();
-      if (!q) return;
-
-      hideDropdown();
-      $body.classList.add('searched');   // 触发布局过渡
-      showLoading();
-
-      try {
-        const list = await fetchSearch(q);
-        renderResults(list);
-      } catch (err) {
-        showError(err.message || '未知错误');
-      }
-    }
-
-    // 表单提交（按钮点击 / 输入框回车，没有 active 推荐项时）
-    $form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      doSearch();
-    });
-
-    // 页面加载完毕直接聚焦输入框
-    $input.focus();
+  loadStats();
+  route();
+  if (!location.search && matchMedia('(pointer: fine)').matches) input.focus();   // 触屏上不自动弹键盘
   </script>
 </body>
 </html>
