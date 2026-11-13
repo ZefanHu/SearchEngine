@@ -282,8 +282,8 @@ classDiagram
 - 五个结构体的大小都用 `static_assert` 锁死，前三个还断言了 `is_trivially_copyable`。
 - **标题加权不改变文件格式**：它在离线端被折算进 `Posting::weight`，在线端和文件格式版本号都不需要动。
   `IndexBuilder` 内部的 `RawPosting{doc_id, term_frequency:31, in_title:1}` 只存在于建库时的内存里，不落盘。
-- 加载时的校验：`index.dat` 检查 magic、版本、各区段大小之和等于文件大小，并逐项检查每个 `TermEntry` 不越界；
-  `pages.dat` 检查 magic 和版本，每次 `get()` 再检查偏移和三段长度不越界；另外检查两个文件的文档数一致。
+- 加载时的校验：`index.dat` 检查 magic、版本、各区段大小之和等于文件大小，并逐项检查每个 `TermEntry` 不越界、词项严格升序
+  （二分查找的前提）；`pages.idx` 检查大小是 8 的整数倍；`pages.dat` 检查 magic 和版本，每次 `get()` 再检查偏移和三段长度不越界；另外检查两个文件的文档数一致。
   损坏或不匹配的文件在启动时（或那次 `get()`）抛异常，而不是读到映射区之外。
 - `pages.dat` 里的记录是紧挨着写的、不保证对齐，所以读 `PageRecordHeader` 和偏移量用 `memcpy`；
   `index.dat` 的各区段都按 8 字节对齐，可以直接把指针转成结构体数组。
@@ -370,7 +370,7 @@ sequenceDiagram
   （中文维基里的法国市镇、小行星列表分页）用词几乎完全相同，会被判成重复。
   这是算法的正常行为；要保留它们只能调小 `simhash_max_distance`。
 - **启动时间**：三个索引文件是 `mmap` 的，不需要“加载”，但启动并不是与数据量完全无关——
-  `InvertedIndex` 要把词典表逐项校验一遍（线上索引的词典表是 695 万 × 24 字节 = 159 MiB），
+  `InvertedIndex` 要把词典表逐项校验一遍、确认词项有序（线上索引的词典表是 695 万 × 24 字节 = 159 MiB），
   `dict.dat` 要整个读入并建 Trie。`mmap` 的代价是冷启动后的第一批查询要等磁盘，
   可以用 `preload_index = true` 在后台预读（BENCHMARK.md 6.5）。
 - **建库内存与倒排记录数成正比**（每条 `RawPosting` 8 字节 + vector 扩容余量；2.28 亿条 → 峰值 3.54 GiB）。
@@ -392,7 +392,7 @@ sequenceDiagram
 但让这个项目“能上线、能说清楚自己有多快”的那部分。
 
 每一站末尾有**自测**（合上代码后应该能回答的问题）和一个**重写练习**。单元测试没有用测试框架，
-全部在 `tests/unit_tests.cpp` 一个文件里，`./build/unit_tests`（或 `ctest --test-dir build`）会跑完全部 18 个并逐个打印结果；
+全部在 `tests/unit_tests.cpp` 一个文件里，`./build/unit_tests`（或 `ctest --test-dir build`）会跑完全部 20 个并逐个打印结果；
 做重写练习时，把自己的实现换进去，盯着练习里点名的那几个测试即可。
 
 ### 第 0 站：建立全局印象（10 分钟）
@@ -458,6 +458,8 @@ sequenceDiagram
 **练习**：重写 `PageStoreWriter::append` 和 `PageStore::get`（含越界检查），用 `page_store_round_trip` 验证；
 再重写 `InvertedIndex` 的构造函数（全部校验）和 `find()`，用 `inverted_index_round_trip` 验证——这个测试的最后一段会喂一个损坏的文件，
 期望构造函数抛异常。
+另外两个测试专门构造“看起来合法但其实坏了”的文件：`page_store_rejects_truncated_offsets`（偏移库被截断）
+和 `inverted_index_rejects_unsorted_terms`（词典表乱序）。
 
 ### 第 3 站：离线管线 `offline/`
 

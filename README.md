@@ -1,13 +1,14 @@
 # SearchEngine
 
-[![CI](https://github.com/ZefanHu/SearchEngine/actions/workflows/ci.yml/badge.svg?branch=cpp17-reference)](https://github.com/ZefanHu/SearchEngine/actions/workflows/ci.yml)
+[![CI](https://github.com/ZefanHu/SearchEngine/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ZefanHu/SearchEngine/actions/workflows/ci.yml)
 
 **在线演示：<https://se2026.aptzone.cc>**（Stack Overflow 提问约 100 万篇 + 中文维基百科约 78 万篇，中英文均可检索）
 
 基于 **C++17** 的轻量级搜索引擎：离线建库（清洗 → 分词 → SimHash 去重 → TF-IDF 倒排索引）＋
 在线服务（网页检索、关键词联想、分片 LRU 缓存、Workflow/wfrest 异步 HTTP）＋ 单文件前端。
 
-> 本分支 `cpp17-reference` 是对原 C++11 版本的整体重构，定位是“可读、可复现的参考实现”。
+> 这是对原 C++11 版本的整体重构，定位是“可读、可复现的参考实现”。重构前的原始代码保留在标签
+> [`v1-cpp11`](https://github.com/ZefanHu/SearchEngine/tree/v1-cpp11)。
 >
 > - 设计思路、阅读顺序（含自测题和重写练习）、踩过的坑：**[ARCHITECTURE.md](ARCHITECTURE.md)**
 > - 压测报告（含 C10K、冷启动、经反向代理的对照）：**[docs/BENCHMARK.md](docs/BENCHMARK.md)**
@@ -51,7 +52,7 @@ SearchEngine/
 │   ├── online/                #   TrieTree / KeyRecommender / WebSearcher / LRUCache / SearchService
 │   └── server/                #   HttpServer
 ├── src/                       # 与 include/search 一一对应的实现
-├── tests/unit_tests.cpp       # 单元测试（18 个，不依赖测试框架）
+├── tests/unit_tests.cpp       # 单元测试（20 个，不依赖测试框架）
 ├── scripts/gen_mock_corpus.py # 生成 BigQuery 导出格式的模拟语料
 ├── scripts/import_zhwiki.py   # 中文维基百科 parquet → NDJSON（繁转简）
 ├── scripts/bench/             # 压测：run_bench.sh、wrk 的 Lua 脚本、查询集、cold_start.py

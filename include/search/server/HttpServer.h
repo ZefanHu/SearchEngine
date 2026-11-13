@@ -10,6 +10,7 @@
 //   GET /                     首页
 //   GET /search?query=xxx     网页检索
 //   GET /recommend?query=xxx  关键词联想
+//   GET /stats                索引规模（文档数、词项数、posting 数、联想词数）
 
 #include <wfrest/HttpServer.h>
 

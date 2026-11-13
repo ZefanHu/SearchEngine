@@ -8,6 +8,7 @@
 #include <fstream>
 #include <functional>
 #include <iostream>
+#include <iterator>
 #include <random>
 #include <string>
 #include <thread>
@@ -381,6 +382,59 @@ TEST(inverted_index_round_trip) {
     bool thrown = false;
     try {
         const InvertedIndex bad(broken);
+    } catch (const std::runtime_error&) {
+        thrown = true;
+    }
+    CHECK(thrown);
+}
+
+TEST(page_store_rejects_truncated_offsets) {
+    const fs::path data = tempDir() / "pages_truncated.dat";
+    const fs::path offsets = tempDir() / "pages_truncated.idx";
+    {
+        PageStoreWriter writer(data, offsets);
+        writer.append("http://a", "A", "first");
+        writer.append("http://b", "B", "second");
+        writer.close();
+    }
+    { const PageStore intact(data, offsets); CHECK(intact.size() == 2); }
+
+    // 砍掉偏移库的最后 3 个字节：16 字节 → 13 字节，不再是 8 的整数倍
+    fs::resize_file(offsets, fs::file_size(offsets) - 3);
+    bool thrown = false;
+    try {
+        const PageStore truncated(data, offsets);
+    } catch (const std::runtime_error&) {
+        thrown = true;
+    }
+    CHECK(thrown);
+}
+
+TEST(inverted_index_rejects_unsorted_terms) {
+    const fs::path path = tempDir() / "index_unsorted.dat";
+    {
+        IndexBuilder builder;
+        builder.addDocument(0, {{"apple", 1}, {"banana", 1}});
+        builder.write(path);
+    }
+    { const InvertedIndex intact(path); CHECK(intact.find("apple") && intact.find("banana")); }
+
+    // 交换词典表的两项：每一项单独看仍然合法（不越界），但 "banana" 排到了 "apple" 前面
+    std::string bytes;
+    {
+        std::ifstream in(path, std::ios::binary);
+        bytes.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+    }
+    CHECK(bytes.size() >= sizeof(IndexHeader) + 2 * sizeof(TermEntry));
+    std::swap_ranges(bytes.begin() + sizeof(IndexHeader), bytes.begin() + sizeof(IndexHeader) + sizeof(TermEntry),
+                     bytes.begin() + sizeof(IndexHeader) + sizeof(TermEntry));
+    {
+        std::ofstream out(path, std::ios::binary | std::ios::trunc);
+        out.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
+    }
+    bool thrown = false;
+    try {
+        const InvertedIndex unsorted(path);
     } catch (const std::runtime_error&) {
         thrown = true;
     }

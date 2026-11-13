@@ -38,6 +38,9 @@ InvertedIndex::InvertedIndex(const std::filesystem::path& path) : file_(path) {
             entry.term_length > header_->string_pool_bytes - entry.term_offset) {
             throw corrupt("term entry out of range");
         }
+        // find() 在词典表上做二分查找，前提是词项严格升序。乱序的表不会崩溃，但会“查不到明明存在的词”，
+        // 这种错误比崩溃更难发现，所以在加载时就拒绝。上面已经确认两项都不越界，这里可以放心读字符串池
+        if (i > 0 && !(termText(terms_[i - 1]) < termText(entry))) throw corrupt("term table is not sorted");
     }
 }
 

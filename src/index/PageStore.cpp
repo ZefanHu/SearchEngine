@@ -39,6 +39,10 @@ void PageStoreWriter::close() {
 
 PageStore::PageStore(const std::filesystem::path& data_path, const std::filesystem::path& offset_path)
     : data_(data_path), offsets_(offset_path), count_(offsets_.size() / sizeof(std::uint64_t)) {
+    // 偏移库是一个 uint64 数组，大小必须是 8 的整数倍；否则文件被截断或根本不是偏移库
+    if (offsets_.size() % sizeof(std::uint64_t) != 0) {
+        throw std::runtime_error("page offset file is truncated (size is not a multiple of 8): " + offset_path.string());
+    }
     PageFileHeader header{};
     if (data_.size() < sizeof(header)) throw std::runtime_error("page store is truncated: " + data_path.string());
     std::memcpy(&header, data_.data(), sizeof(header));
