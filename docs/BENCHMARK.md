@@ -66,7 +66,7 @@ ss -s; ss -Htn state established '( sport = :9000 )' | wc -l    # 压测进行�
 要点：
 
 - **每轮 30 秒，轮间隔 10 秒**；单连接基线每轮 10 秒。
-- **两份配置**：`bench-cache.conf`（`cache_capacity = 20000`，默认值）和 `bench-nocache.conf`（`cache_capacity = 0`）。容量为 0 时 `LruCache::put` 直接返回，`get` 查的是空表，相当于关闭缓存。
+- **两份配置**：`bench-cache.conf`（`cache_capacity = 20000`，默认值）和 `bench-nocache.conf`（`cache_capacity = 0`）。容量为 0 相当于关闭缓存：测这几节时 `put` 直接返回、`get` 仍要加锁查一张空表；之后的版本里 `get` 也在加锁之前返回。
 - **wrk 脚本**：`search.lua` 每个请求随机选一条查询并做 URL 编码；`recommend.lua` 取查询的前 2~4 个字母。两个脚本都在 `response()` 里统计非 2xx 响应，在 `done()` 里汇总。
 - **页缓存预热**：脚本开始时把索引文件顺序读一遍（`cat > /dev/null`）。原因见 6.5 节。
 - **C10K 阶段每个连接数档位都重启服务并重新预热 30 秒**，这样 RSS 有干净的起点。

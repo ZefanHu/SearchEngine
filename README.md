@@ -1,10 +1,17 @@
 # SearchEngine
 
+[![CI](https://github.com/ZefanHu/SearchEngine/actions/workflows/ci.yml/badge.svg?branch=cpp17-reference)](https://github.com/ZefanHu/SearchEngine/actions/workflows/ci.yml)
+
+**在线演示：<https://se2026.aptzone.cc>**（Stack Overflow 提问约 100 万篇 + 中文维基百科约 78 万篇，中英文均可检索）
+
 基于 **C++17** 的轻量级搜索引擎：离线建库（清洗 → 分词 → SimHash 去重 → TF-IDF 倒排索引）＋
-在线服务（网页检索、关键词联想、分片 LRU 缓存、Workflow/wfrest 异步 HTTP）。
+在线服务（网页检索、关键词联想、分片 LRU 缓存、Workflow/wfrest 异步 HTTP）＋ 单文件前端。
 
 > 本分支 `cpp17-reference` 是对原 C++11 版本的整体重构，定位是“可读、可复现的参考实现”。
-> 设计思路、阅读顺序与避坑总结见 **[ARCHITECTURE.md](ARCHITECTURE.md)**。
+>
+> - 设计思路、阅读顺序（含自测题和重写练习）、踩过的坑：**[ARCHITECTURE.md](ARCHITECTURE.md)**
+> - 压测报告（含 C10K、冷启动、经反向代理的对照）：**[docs/BENCHMARK.md](docs/BENCHMARK.md)**
+> - 建库日志与数据质量记录（去重、标题加权的实测数据）：**[docs/DATA.md](docs/DATA.md)**
 
 ## 功能
 
@@ -16,7 +23,10 @@
 | 网页检索 | 多路倒排链求交（AND，空则退化为 OR）＋ 余弦相似度 Top-K ＋ 命中词摘要 |
 | 关键词联想 | UTF-8 Trie 前缀补全（按词频）＋ 最小编辑距离纠错兜底 |
 | 缓存 | 线程安全、哈希分片的 LRU，缓存值用 `shared_ptr<const string>` 共享 |
-| HTTP 服务 | wfrest 路由；缓存命中走网络线程快速路径，未命中交给 `WFGoTask` 计算线程池 |
+| HTTP 服务 | wfrest 路由；缓存命中走网络线程快速路径，未命中交给 `WFGoTask` 计算线程池；默认只监听 127.0.0.1 |
+| 运行保护 | 启动时检查 fd 上限（不够则自动提高或拒绝启动）；可选的后台索引预读（`preload_index`） |
+| 前端 | 单文件 `web/index.html`：联想下拉、命中词高亮、深色模式；接口文本只经 `textContent` 渲染 |
+| 部署 | systemd 单元模板（资源上限 + 沙箱），对外由 Caddy/Nginx 反向代理 |
 
 ## 目录结构
 
@@ -24,7 +34,11 @@
 SearchEngine/
 ├── CMakeLists.txt
 ├── ARCHITECTURE.md            # 架构导读（先读这个）
-├── deploy/                    # systemd 单元模板
+├── docs/
+│   ├── BENCHMARK.md           #   压测报告
+│   └── DATA.md                #   建库日志与数据质量记录（文档里数字的出处）
+├── .github/workflows/ci.yml   # CI：构建 → 单元测试 → 建库 → 在线冒烟测试 → fd 上限 → 预读
+├── deploy/search-engine.service  # systemd 单元模板
 ├── conf/search.conf           # 运行配置（相对路径以该文件所在目录为基准）
 ├── apps/                      # 三个可执行程序的 main()
 │   ├── build_index.cpp        #   离线建库
@@ -37,18 +51,20 @@ SearchEngine/
 │   ├── online/                #   TrieTree / KeyRecommender / WebSearcher / LRUCache / SearchService
 │   └── server/                #   HttpServer
 ├── src/                       # 与 include/search 一一对应的实现
-├── tests/unit_tests.cpp       # 单元测试（零依赖）
+├── tests/unit_tests.cpp       # 单元测试（18 个，不依赖测试框架）
 ├── scripts/gen_mock_corpus.py # 生成 BigQuery 导出格式的模拟语料
 ├── scripts/import_zhwiki.py   # 中文维基百科 parquet → NDJSON（繁转简）
-├── scripts/bench/             # wrk 压测脚本，结果见 docs/BENCHMARK.md
-├── third_party/               # cppjieba、simhash、nlohmann/json（原样保留，未修改）
+├── scripts/bench/             # 压测：run_bench.sh、wrk 的 Lua 脚本、查询集、cold_start.py
+├── third_party/
+│   ├── nlohmann/              #   nlohmann/json
+│   └── simhash/               #   cppjieba（在 simhash/cppjieba 下）；Simhasher.hpp 是原项目留下的，现已不使用
 ├── data/
 │   ├── jieba/                 #   分词词典
 │   ├── stopwords/             #   停用词
-│   ├── corpus/rss/            #   人民网 RSS 样例语料
-│   ├── corpus/gcp/            #   模拟/真实的 NDJSON 语料（不入库）
+│   ├── corpus/rss/            #   人民网 RSS 样例语料（4,208 篇，入库）
+│   ├── corpus/gcp/            #   gen_mock_corpus.py 的默认输出（不入库）
 │   └── index/                 #   build_index 的产物（不入库）
-└── web/index.html             # 演示前端
+└── web/index.html             # 单文件前端，由 GET / 返回
 ```
 
 ## 构建
@@ -63,7 +79,7 @@ SearchEngine/
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
-ctest --test-dir build --output-on-failure      # 单元测试
+ctest --test-dir build --output-on-failure      # 单元测试（或直接运行 ./build/unit_tests 看每个用例的结果）
 ```
 
 产物在 `bin/`：`build_index`、`search_cli`，以及（检测到 wfrest 时）`search_server`。
@@ -76,7 +92,7 @@ ctest --test-dir build --output-on-failure      # 单元测试
 python3 scripts/gen_mock_corpus.py
 python3 scripts/gen_mock_corpus.py --docs 1000000     # 百万级
 
-# 2. 离线建库：读取 data/corpus 下所有语料，生成 data/index/
+# 2. 离线建库：递归读取 data/corpus 下所有语料（自带的 RSS 样例 + 上一步生成的），生成 data/index/
 ./bin/build_index conf/search.conf
 
 # 3a. 命令行查询（不需要 HTTP 服务）
@@ -136,7 +152,33 @@ python3 -m venv .venv && .venv/bin/pip install pyarrow opencc             # 依�
 | `GET /stats` | 索引规模（只读） | `{"documents","terms","postings","suggest_words"}` |
 | `GET /` | 演示页面 | HTML |
 
-参数缺失、超过 256 字节或百分号编码非法时返回 `400` 和 `{"error": "..."}`。
+`/search` 和 `/recommend` 在参数缺失、超过 256 字节或百分号编码非法时返回 `400` 和 `{"error": "..."}`；
+计算过程中出现异常时返回 `500`。`score` 是查询与文档的余弦相似度（0~1）。
+`/search` 的多个词之间是“与”的关系，没有同时包含全部词的文档时退化为“或”。
+
+## 配置项
+
+全部在 `conf/search.conf` 里，每一项都有注释；相对路径以配置文件所在目录为基准。除路径外都有默认值：
+
+| 配置项 | 默认值 | 说明 |
+| --- | --- | --- |
+| `jieba_dict` / `jieba_hmm` / `jieba_user_dict` / `jieba_idf` / `jieba_stop_words` | — | cppjieba 的五个词典文件 |
+| `stop_word_files` | — | 停用词文件，逗号分隔 |
+| `corpus_dir` / `index_dir` | — | 语料目录（递归扫描）/ 索引输出目录 |
+| `build_threads` | `0` | 建库线程数，0 = 全部 CPU 核心 |
+| `build_batch_size` | `2048` | 每批并行处理的文档数 |
+| `simhash_max_distance` | `3` | 判重的海明距离阈值（0~3） |
+| `suggest_min_df` | `2` | 联想词典只收录文档频率不低于该值的词 |
+| `title_weight_percent` | `100` | 标题加权：标题词额外加上“正文向量模长 × N%”，0 = 不加权。**改了要重建索引** |
+| `listen_host` / `port` | `127.0.0.1` / `9000` | 监听地址和端口 |
+| `max_connections` | `2000` | 最大并发连接数；fd 上限必须不低于它加 64 |
+| `search_top_k` / `suggest_top_k` | `10` / `10` | 检索 / 联想的返回条数 |
+| `snippet_bytes` | `300` | 摘要长度（字节，按 UTF-8 字符边界截断） |
+| `cache_capacity` / `cache_shards` | `20000` / `16` | LRU 缓存的总容量和分片数；容量 0 = 关闭缓存 |
+| `preload_index` | `false` | 启动后用后台线程把索引读进页缓存 |
+| `web_index` | — | `GET /` 返回的静态文件 |
+
+本机专用的设置建议另存一份配置（例如 `conf/local.conf`）并把路径作为第一个参数传给三个程序，不要直接改 `search.conf`。
 
 ## 部署与高并发
 
@@ -159,11 +201,13 @@ python3 -m venv .venv && .venv/bin/pip install pyarrow opencc             # 依�
   `sudo cp deploy/search-engine.service /etc/systemd/system/ && sudo systemctl daemon-reload && sudo systemctl enable --now search-engine`。
   内存上限要按“索引文件大小 + 约 1 GiB”来留：索引是 `mmap` 的，它占的页缓存计入服务自己的 cgroup。
 - **关闭缓存**：`cache_capacity = 0`，此时缓存的读写都直接返回、不加锁。
+- **反向代理的开销**：经 Caddy（HTTPS）之后吞吐约为直连的 13%，瓶颈在代理一侧而不是检索服务（BENCHMARK.md 第 9 节）。
 - 压测方法、各项上限的实测表现见 **[docs/BENCHMARK.md](docs/BENCHMARK.md)**。
 
 ```bash
 curl -s --get http://127.0.0.1:9000/search    --data-urlencode "query=海洋经济"
 curl -s --get http://127.0.0.1:9000/recommend --data-urlencode "query=中"
+curl -s http://127.0.0.1:9000/stats
 ```
 
 ## License
